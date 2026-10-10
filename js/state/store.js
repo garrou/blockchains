@@ -11,5 +11,6 @@
     follow: true,      // keep the camera on the latest block
     focusId: null,     // slot the camera is on ('next' or a block id)
     selectedId: null,  // block selected for the "details" button
+    wallet: null,      // the tracked address (controllers/wallet.js): { address, txs: its transactions, confirmedTotal, busy, failed }
   };
 })();

@@ -223,6 +223,12 @@
     active: () => scene !== null,
     sync, focus, publishNow, onProjected, resetProjection,
     isProjected: (txid) => projection.has(txid),
+    /** Whether the projected next block is known yet (before that, `isProjected` says nothing). */
+    hasProjection: () => projection.hasData(),
+    /** Tracked wallet: { txids, blocks, dim } makes its towers glow (see scene3d.setHighlight); null stops. */
+    setHighlight(tracked) { if (scene) scene.setHighlight(tracked); },
+    /** Txids of the tracked towers that are currently drawn. */
+    litTxids: () => (scene ? scene.litTxids() : new Set()),
     /** Transactions displayed by a slot (diagnostics). */
     txCount: (id) => (scene ? scene.txCount(id) : 0),
     stream(items) { if (scene && items.length) scene.stream(items); },

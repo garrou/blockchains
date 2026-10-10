@@ -69,7 +69,10 @@
   const txsTitle = (loaded, total) => `Transactions (${F.number(loaded)} / ${F.number(total)})`;
 
   BTC.ui.detail = {
-    /** handlers: onOpenTx(txid), onOpenBlock(hash), onOpenAddress(address), onMoreTxs() (older transactions of the address) */
+    /**
+     * handlers: onOpenTx(txid), onOpenBlock(hash), onOpenAddress(address), onMoreTxs() (older transactions of the address),
+     * onShowInScene() (the address page offers to show its transactions in the 3D scene; absent without 3D)
+     */
     init(h) {
       handlers = h;
       $('#close').addEventListener('click', () => dialog.close());
@@ -135,6 +138,9 @@
         button.textContent = 'Loading…';
         handlers.onMoreTxs();
       } }, 'Load more');
+      const scene = handlers.onShowInScene && txs && txs.length
+        ? el('button', { type: 'button', class: 'show3d', title: 'Light up these transactions in the 3D scene', onclick: () => handlers.onShowInScene() }, 'Show in 3D')
+        : null;
       show(el('h2', {}, 'Address'), fields([
         ['Address', mono(a.address)],
         ['Type', BTC.address.kind(a.address)],
@@ -143,7 +149,7 @@
         ['Total received', F.btc(a.received)],
         ['Total sent', F.btc(a.sent)],
         ['Unspent outputs', F.number(a.unspent)],
-      ]), title,
+      ]), scene, title,
       txs && !txs.length ? el('p', { class: 'muted' }, 'No transactions yet.') : null,
       txs ? null : el('p', { class: 'muted' }, `Couldn't load the transactions${error ? ` (${error})` : ''}.`),
       list, button);

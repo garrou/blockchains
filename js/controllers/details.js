@@ -79,5 +79,8 @@
     }
   }
 
-  BTC.details = { begin, isCurrent, openTx, openBlock, openAddress, moreAddressTxs };
+  /** The address page that is open: { address, summary, txs } (null when the dialog shows something else, or the list failed). */
+  const shownAddress = () => (shown && wanted(shown.token) ? shown : null);
+
+  BTC.details = { begin, isCurrent, openTx, openBlock, openAddress, moreAddressTxs, shownAddress };
 })();

@@ -21,6 +21,13 @@
   const FILL = 0.86;        // share of its treemap cell a tower covers (the rest is the gap between towers)
   const FLASH = 0.7;        // white flash duration (s)
   const HOVER_WHITE = 2.4;  // color value of the hovered tower (> 1: glows with the bloom)
+  const MINE = 0xff5cf0;    // tracked wallet: a beacon of this color rises from each of its towers, its blocks are outlined with it
+  const BOOST = 1.8;        // color value of a tracked tower (> 1: glows with the bloom)
+  const DIM = 0.22;         // the other towers while a wallet is tracked (share of their own color)
+  const DIM_LITE = 0.4;     // same for the light shape of a far block
+  const BEACON_W = 0.45;    // side of a beacon
+  const BEACON_H = FRAME_H + 12; // a beacon rises above the cage
+  const MAX_BEACONS = 60;   // per block: a wallet with hundreds of transactions in one block still has all its towers glowing
   const THEME = { mined: BTC.colors.MINED_BLOCK_HEX, next: BTC.colors.NEXT_BLOCK_HEX };
 
   function create(container, opts = {}) {
@@ -101,6 +108,7 @@
     // ----- blocks ("slots") -----
     const slots = new Map();   // id -> slot
     let focusId = null, snapped = false;
+    let track = null;          // the tracked wallet while there is one: { txids: Set of txids, blocks: Set of block ids, dim: boolean }
 
     function makeSlot(meta) {
       const color = THEME[meta.kind] ?? THEME.mined;
@@ -117,10 +125,12 @@
       scene.add(group);
       const slot = {
         id: meta.id, kind: meta.kind, group, cage, glass, targetX: meta.pos * PITCH, mesh: null, txs: null,
+        theme: color, mine: new Set(), beacons: new Map(), beaconAt: null, // tracked wallet: its towers in this block, their beacons
         placer: meta.kind === 'next' ? BTC.layout.stable() : null, // the projected block changes all the time (used by the 'stable' placement)
         list: [], rects: [], heights: [], base: null, t: 0, growing: false, arrivals: [], stream: [], pulse: 0
       };
       slots.set(meta.id, slot);
+      if (track) styleCues(slot);
       return slot;
     }
 
@@ -137,6 +147,7 @@
     function disposeMesh(slot) {
       clearArrivals(slot);
       disposeLite(slot);
+      clearBeacons(slot);
       if (!slot.mesh) return;
       slot.group.remove(slot.mesh); slot.mesh.material.dispose(); slot.mesh.dispose && slot.mesh.dispose();
       slot.mesh = null;
@@ -159,6 +170,74 @@
         if (o.material) { o.material.map && o.material.map.dispose(); o.material.dispose(); }
       });
       slots.delete(slot.id);
+      litChanged();
+    }
+
+    // ----- tracked wallet -----
+    // While an address is tracked (setHighlight): its towers glow and a beacon rises from each, the other towers are dimmed,
+    // and a block that holds some of its transactions is outlined in its color. Everything derives from `track`: restyle()
+    // applies it to a block when it changes, buildMesh() when a block is built again.
+    const beaconMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(MINE).multiplyScalar(1.6), transparent: true, opacity: 0.85, depthWrite: false, fog: false });
+    const shade = (slot, k) => (!track ? 1 : slot.mine.has(k) ? BOOST : track.dim ? DIM : 1); // factor on the color of tower k
+
+    function litChanged() { if (track && opts.onHighlight) opts.onHighlight(); }
+
+    // the towers of the block that belong to the tracked wallet
+    function indexMine(slot) {
+      slot.mine = new Set();
+      if (track) slot.list.forEach((x, k) => { if (track.txids.has(x.txid)) slot.mine.add(k); });
+    }
+
+    function clearBeacons(slot) {
+      for (const m of slot.beacons.values()) slot.group.remove(m);
+      slot.beacons.clear();
+      slot.beaconAt = null;
+    }
+
+    // one beacon per tracked tower (up to MAX_BEACONS), where the tower is; place() moves it along with the tower
+    function syncBeacons(slot) {
+      const want = new Map(); // txid -> tower index
+      for (const k of slot.mine) { if (want.size >= MAX_BEACONS) break; want.set(slot.list[k].txid, k); }
+      for (const [txid, m] of [...slot.beacons]) if (!want.has(txid)) { slot.group.remove(m); slot.beacons.delete(txid); }
+      slot.beaconAt = new Map();
+      for (const [txid, k] of want) {
+        let m = slot.beacons.get(txid);
+        if (!m) {
+          m = new THREE.Mesh(unitBox, beaconMat);
+          m.scale.set(BEACON_W, BEACON_H, BEACON_W);
+          m.userData.beacon = true;
+          slot.group.add(m);
+          slot.beacons.set(txid, m);
+        }
+        const r = slot.rects[k];
+        m.position.set(r.x + r.w / 2 - SIZE / 2, 0, r.y + r.h / 2 - SIZE / 2);
+        slot.beaconAt.set(k, m);
+      }
+    }
+
+    // A block is outlined in the wallet's color when it holds tracked transactions (known by its towers, or by its id while
+    // it is only a light shape); the light shape of the other blocks is dimmed.
+    function styleCues(slot) {
+      const marked = !!track && (slot.mine.size > 0 || track.blocks.has(slot.id));
+      const tint = marked ? MINE : slot.theme;
+      slot.cage.material.color.setHex(tint);
+      slot.glass.material.color.setHex(tint);
+      if (slot.lite) slot.lite.material.color.copy(slot.liteColor).multiplyScalar(track && track.dim && !marked ? DIM_LITE : 1);
+    }
+
+    // Applies `track` (or its absence) to a block that is already built.
+    function restyle(slot) {
+      indexMine(slot);
+      if (slot.mesh) {
+        const col = slot.mesh.instanceColor;
+        for (let k = 0; k < slot.list.length; k++) {
+          const f = shade(slot, k);
+          for (let c = 0; c < 3; c++) col.array[k * 3 + c] = slot.base[k * 3 + c] * f;
+        }
+        col.needsUpdate = true;
+      }
+      syncBeacons(slot);
+      styleCues(slot);
     }
 
     // e = growth progress (0 = on the ground, 1 = full height)
@@ -167,6 +246,8 @@
       dummy.scale.set(fit(r.w), Math.max(0.001, height), fit(r.h));
       dummy.updateMatrix();
       slot.mesh.setMatrixAt(k, dummy.matrix);
+      const beacon = slot.beaconAt && slot.beaconAt.get(k);
+      if (beacon) beacon.position.set(dummy.position.x, 0, dummy.position.z); // a beacon follows its tower
     }
     function setTower(slot, k, e) { place(slot, k, slot.rects[k], slot.heights[k] * e); }
 
@@ -262,7 +343,8 @@
         setTower(s, a.k, 1 - SQUASH * Math.sin(Math.PI * Math.min(1, a.landT / SETTLE))); // lands full-size, squashes a little
         const flash = Math.max(0, 1 - a.landT / FLASH); // white flash fading to the real color
         const col = s.mesh.instanceColor.array;
-        for (let c = 0; c < 3; c++) col[a.k * 3 + c] = s.base[a.k * 3 + c] * (1 - flash) + 2.4 * flash;
+        const f = shade(s, a.k);
+        for (let c = 0; c < 3; c++) col[a.k * 3 + c] = s.base[a.k * 3 + c] * f * (1 - flash) + 2.4 * flash;
       }
       s.mesh.instanceMatrix.needsUpdate = true;
       s.mesh.instanceColor.needsUpdate = true;
@@ -282,7 +364,9 @@
       if (!txs || !txs.length) {
         for (const a of carried) { slot.group.remove(a.mesh); a.mesh.material.dispose(); }
         if (slot.placer) slot.placer.reset();
-        disposeMesh(slot); slot.list = []; slot.growing = false; return;
+        disposeMesh(slot); slot.list = []; slot.growing = false;
+        indexMine(slot); styleCues(slot); litChanged();
+        return;
       }
       // previous footprints by txid, to glide towers to their new place (only for an in-place update of a shown block)
       const prev = !animate && !reduceMotion && slot.mesh && slot.list.length
@@ -297,6 +381,7 @@
       slot.rects = layout.rects;
       slot.heights = layout.heights;
       slot.base = layout.colors;
+      indexMine(slot);
       const n = slot.list.length;
       // Reuse the GPU buffers when the existing mesh is big enough (frequent projected-block updates): only
       // matrices and colors are rewritten. The capacity has headroom so growing blocks rarely reallocate.
@@ -316,8 +401,9 @@
         slot.group.add(mesh);
       }
       const c = new THREE.Color();
-      for (let k = 0; k < n; k++) mesh.setColorAt(k, c.fromArray(slot.base, k * 3));
+      for (let k = 0; k < n; k++) mesh.setColorAt(k, c.fromArray(slot.base, k * 3).multiplyScalar(shade(slot, k)));
       mesh.instanceColor.needsUpdate = true;
+      syncBeacons(slot); // before the matrices are written: place() then moves them with the towers
       slot.t = animate ? 0 : STAGGER + GROW;
       slot.growing = !!animate;
       if (prev) { slot.morph = { t: 0, from: slot.list.map((x) => prev.get(x.txid) || null) }; writeMorph(slot, 0); }
@@ -336,6 +422,8 @@
       }
       if (carried.length) mesh.instanceMatrix.needsUpdate = true;
       if (!animate && incoming && incoming.length && !reduceMotion) spawnArrivals(slot, incoming);
+      styleCues(slot);
+      litChanged();
     }
 
     // ----- interaction -----
@@ -345,8 +433,8 @@
     function setHover(h) {
       if ((hover && h && hover.slot === h.slot && hover.id === h.id) || (!hover && !h)) return;
       if (hover) { // restore the color
-        const col = hover.slot.mesh.instanceColor;
-        col.array.set(hover.slot.base.subarray(hover.id * 3, hover.id * 3 + 3), hover.id * 3);
+        const col = hover.slot.mesh.instanceColor, f = shade(hover.slot, hover.id);
+        for (let c = 0; c < 3; c++) col.array[hover.id * 3 + c] = hover.slot.base[hover.id * 3 + c] * f;
         col.needsUpdate = true;
       }
       hover = h;
@@ -524,6 +612,7 @@
         }
       }
       paintHover();
+      if (track) beaconMat.opacity = reduceMotion ? 0.8 : 0.6 + 0.3 * Math.sin(now / 250); // the beacons pulse
       updateLinks(dt, now / 1000);
       // the camera follows the selected block, translation only (the user-chosen angle is kept)
       const f = slots.get(focusId);
@@ -581,9 +670,27 @@
         if (s.lite && s.liteKey === key) return; // already showing this shape
         disposeLite(s);
         s.liteKey = key;
-        const m = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({ color: colorOf(BTC.colors.rate(rate ?? 2)), metalness: 0.35, roughness: 0.5, transparent: true, opacity: 0.85 }));
+        s.liteColor = colorOf(BTC.colors.rate(rate ?? 2));
+        const m = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({ color: s.liteColor.clone(), metalness: 0.35, roughness: 0.5, transparent: true, opacity: 0.85 }));
         m.scale.set(SIZE - 3, h, SIZE - 3);
         s.group.add(m); s.lite = m;
+        styleCues(s);
+      },
+      /**
+       * Tracks a wallet: the towers of `txids` glow and get a beacon, the blocks of `blocks` (ids) are outlined, everything
+       * else is dimmed unless dim is false. null = back to normal. The option onHighlight is called whenever the towers
+       * that are lit may have changed.
+       */
+      setHighlight(next) {
+        track = next && next.txids.size ? { txids: next.txids, blocks: next.blocks ?? new Set(), dim: next.dim !== false } : null;
+        for (const s of slots.values()) restyle(s);
+        if (opts.onHighlight) opts.onHighlight();
+      },
+      /** Txids of the tracked towers that are currently drawn. */
+      litTxids() {
+        const out = new Set();
+        for (const s of slots.values()) for (const k of s.mine) out.add(s.list[k].txid);
+        return out;
       },
       /** The camera follows this slot. */
       focus(id) { focusId = id; },

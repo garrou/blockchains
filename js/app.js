@@ -10,6 +10,12 @@
   const { state, nav, details } = BTC;
   const ui = BTC.ui;
 
+  // Tooltip line of a tower that belongs to the tracked wallet
+  const mineNote = (txid) => {
+    const e = BTC.walletCtl.entryOf(txid);
+    return e ? `\n★ ${F.btcSigned(e.net)} for ${F.short(state.wallet.address, 8, 6)}` : '';
+  };
+
   // ----- 3D scene (optional: needs Three.js and WebGL) -----
   let scene = null;
   try {
@@ -19,14 +25,24 @@
         ? 'Coinbase (block reward)'
         : t.approx
           ? `${F.short(t.txid, 12, 8)}\n(size and fee unavailable)`
-          : `${F.short(t.txid, 12, 8)}\n${t.rate.toFixed(1)} sat/vB · ${F.number(t.vsize)} vB\nfee ${F.number(t.fee)} sats`),
+          : `${F.short(t.txid, 12, 8)}\n${t.rate.toFixed(1)} sat/vB · ${F.number(t.vsize)} vB\nfee ${F.number(t.fee)} sats`)
+        + mineNote(t.txid),
       onPick: (t) => details.openTx(t.txid),
       onFocus: (id) => nav.focus(id),
+      onHighlight: () => BTC.walletCtl.onSceneChange(), // the towers lit for the tracked wallet may have changed
     }) ?? null;
   } catch (e) { console.warn('3D scene unavailable (no WebGL?)', e); scene = null; }
 
   // ----- views -----
-  ui.detail.init({ onOpenTx: details.openTx, onOpenBlock: details.openBlock, onOpenAddress: details.openAddress, onMoreTxs: details.moreAddressTxs });
+  ui.detail.init({
+    onOpenTx: details.openTx, onOpenBlock: details.openBlock, onOpenAddress: details.openAddress, onMoreTxs: details.moreAddressTxs,
+    onShowInScene: scene ? () => { // light up the transactions of the address page in the 3D scene
+      const a = details.shownAddress();
+      if (!a) return;
+      BTC.walletCtl.track(a.address, a.txs, a.summary);
+      ui.detail.close();
+    } : null,
+  });
   ui.feed.init({ onOpenTx: details.openTx });
   ui.blocksRow.init({
     onSelect: (id) => (scene ? nav.focus(id) : details.openBlock(id)), // without 3D, a click opens the details
@@ -44,6 +60,10 @@
     BTC.sceneSync.init(scene);
     BTC.sceneSync.setOrder(prefs.order);
     BTC.sceneSync.setPlacement(prefs.placement);
+    BTC.walletCtl.setDim(ui.wallet.init({
+      onJump: BTC.walletCtl.jump, onOpenAddress: details.openAddress, onRefresh: BTC.walletCtl.refresh,
+      onClear: BTC.walletCtl.clear, onMore: BTC.walletCtl.loadOlder, onDim: BTC.walletCtl.setDim,
+    }).dim);
   } else ui.hud.hideStage();
 
   // ----- search -----
@@ -57,7 +77,7 @@
   BTC.socket.connect({
     onStatus: ui.hud.setStatus,
     onOpen: () => nav.refreshBlocks().catch((e) => console.warn('blocks', e)), // backfill the blocks mined while offline
-    onBlock: nav.addBlock,
+    onBlock(b) { nav.addBlock(b); BTC.walletCtl.onBlock(); },
     onUpcoming(list) {
       state.upcoming = list;
       ui.blocksRow.renderUpcoming(list, state.focusId === nextId);
@@ -78,6 +98,7 @@
   document.addEventListener('visibilitychange', () => { // back to the tab: catch up now rather than at the next tick
     if (document.hidden) return;
     ui.blocksRow.refreshAgo();
+    BTC.walletCtl.catchUp();
     BTC.statsCtl.maybeRefresh();
     BTC.feedCtl.poll();
   });

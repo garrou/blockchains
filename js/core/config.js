@@ -33,6 +33,10 @@
       maxRetry: 8,
       summaryMinRatio: 0.95, // a block summary with fewer rows than this share of tx_count is incomplete
     },
+    wallet: {
+      pollMs: 30000,        // a tracked wallet is reloaded this often: a transaction that was sent or mined shows up within this delay
+      afterBlockMs: 3000,   // ...and this long after a new block (the address index needs a moment to catch up)
+    },
     stats: { jPerTh: 25, refreshMs: 60000, minGapMs: 15000 },
     // Layout order of the towers: 'txid' = by transaction id (neutral, stable), 'api' = order given by mempool.space
     // (already sorted by fee rate), 'size' = largest first (squarer shapes, reshuffles on every change)

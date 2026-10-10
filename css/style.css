@@ -7,6 +7,7 @@
   --accent: #f7931a;
   --ok: #3ecf8e;
   --bad: #ef5b5b;
+  --mine: #ff5cf0; /* the tracked wallet: beacons, outlined blocks, the panel */
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -1014,6 +1015,7 @@ dialog::backdrop {
 .hud-actions select { pointer-events: auto; font: inherit; font-size: .85rem; color: inherit; background: var(--panel);
   border: 1px solid var(--line); border-radius: 8px; padding: .25rem .4rem; cursor: pointer; }
 .hud-actions select:hover { border-color: var(--accent); }
+.hud-actions select:focus-visible:hover { border-color: var(--line); } /* like the buttons: the focus ring, not ring + hover border */
 
 /* the dialog itself takes the initial focus (no ring on the close button); keyboard focus still shows a single ring */
 dialog:focus { outline: none; }
@@ -1028,3 +1030,43 @@ button:focus-visible:hover { border-color: var(--line); } /* one orange contour 
 .io li.mine { background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 4px; padding-inline: .3rem; }
 .io li.mine .mono { color: var(--text); font-weight: 600; }
 .addr-more { display: block; margin: 1rem auto 0; }
+
+/* ---------- tracked wallet: "Show in 3D" button, the panel over the scene ---------- */
+.show3d { display: block; margin: 0 0 .5rem; color: var(--mine); border-color: var(--mine); }
+.show3d:hover { border-color: var(--mine); background: color-mix(in srgb, var(--mine) 14%, var(--panel)); }
+
+.wallet {
+  position: absolute; left: .75rem; bottom: 4.2rem; z-index: 3;
+  display: flex; flex-direction: column;
+  width: min(340px, calc(100% - 1.5rem)); max-height: calc(100% - 9.5rem);
+  padding: .55rem .65rem;
+  background: #11131ae6; backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--mine) 55%, var(--line)); border-radius: 12px;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--mine) 18%, transparent);
+}
+.w-head { display: flex; align-items: center; gap: .3rem; }
+.w-head .link { flex: 1; min-width: 0; font-size: .85rem; color: var(--mine); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-btn { padding: .1rem .45rem; font-size: .9rem; line-height: 1.3; border-radius: 6px; }
+.w-btn:disabled { opacity: .5; cursor: progress; }
+.wallet.busy #wallet-refresh { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.w-sum { margin: .25rem 0 .35rem; font-size: .75rem; color: var(--muted); }
+.w-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.w-body .scroll-host { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.wallet.collapsed .w-body, .wallet.collapsed .w-sum { display: none; }
+#wallet-list { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; overflow-y: auto; }
+.w-row { display: flex; align-items: center; gap: .55rem; width: 100%; padding: .35rem .3rem; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; text-align: left; font-size: .8rem; }
+.w-row:hover { border-color: var(--line); background: #222636; }
+#wallet-list li:first-child .w-row { border-top-color: transparent; }
+.w-dot { flex: none; width: .6rem; height: .6rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--mine) 55%, var(--muted)); }
+.w-row.lit .w-dot { background: var(--mine); border-color: var(--mine); box-shadow: 0 0 8px var(--mine); }
+.w-what { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.w-what small { color: var(--muted); font-size: .72rem; line-height: 1.25; overflow-wrap: anywhere; }
+.w-row.pending .w-what b { color: var(--accent); }
+.w-more { margin-top: .4rem; padding: .3rem; font-size: .8rem; }
+.w-dim { display: flex; align-items: center; gap: .4rem; margin-top: .5rem; font-size: .75rem; color: var(--muted); cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .wallet.busy #wallet-refresh { animation: none; } }
+@media (max-width: 640px) {
+  /* the stage is a column on a phone: the panel sits between the scene and the legend instead of over the scene */
+  .wallet { position: static; width: auto; max-height: 44vh; margin: .5rem .75rem; }
+}
