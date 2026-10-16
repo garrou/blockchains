@@ -1,7 +1,7 @@
 // The live transaction feed: several sources feed the same stream (deduplicated by txid):
-//   1. /mempool/recent (polled every second)
-//   2. transactions entering the next block (WebSocket, track-mempool-block)
-//   3. if the server sends them: 'transactions' / 'mempool-txids' (formats not verified live)
+//   1. the chain's list of recent transactions (polled every second)
+//   2. transactions entering the next block (pushed by the chain: live.onProjected)
+//   3. transactions the chain pushes as they enter the mempool (live.onTransactions / onTxids)
 (() => {
   'use strict';
   const BTC = (window.BTC = window.BTC || {});
@@ -27,7 +27,7 @@
     if (polling || document.hidden) return; // a slow API must not pile up requests; nobody looks at a hidden tab
     polling = true;
     try {
-      ingest((await BTC.api.recent()).slice().reverse()); // oldest first: the newest ends on top
+      ingest((await BTC.chain.data.recentTxs()).slice().reverse()); // oldest first: the newest ends on top
     } catch (e) { console.warn('recent', e); } finally { polling = false; }
   }
 

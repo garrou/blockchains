@@ -8,34 +8,32 @@
 
   let handlers = {};
 
+  // What a card says (title, lines, how full the block is) is the chain's: BTC.chain.blockCard / nextCard. The
+  // "x ago" line is the engine's (every block has a timestamp).
   function blockCard(b, selectedId, freshId) {
+    const card = BTC.chain.blockCard(b);
     return el('button', {
       class: `block${b.id === freshId ? ' fresh' : ''}${b.id === selectedId ? ' selected' : ''}`,
       'data-id': b.id,
-      style: `--fill:${Math.min(1, b.weight / cfg.blockWeight)}`,
+      style: `--fill:${card.fill}`,
       onclick: () => handlers.onSelect(b.id),
       ondblclick: () => handlers.onOpen(b.id),
     },
-      el('b', {}, `#${F.number(b.height)}`),
-      el('span', {}, `${F.number(b.tx_count)} tx`),
-      el('span', {}, `${(b.size / 1e6).toFixed(2)} MB`),
-      el('span', {}, b.extras?.pool?.name ?? '—'),
+      el('b', {}, card.title),
+      card.lines.map((line) => el('span', {}, line)),
       el('span', { class: 'ago', 'data-ts': b.timestamp }, F.ago(b.timestamp)));
   }
 
   function nextCard(m, selected) {
-    const [lo, hi] = m.feeRange ? [m.feeRange[0], m.feeRange.at(-1)] : [0, 0];
+    const card = BTC.chain.nextCard(m);
     return el('button', {
       type: 'button',
       class: `block pending clickable${selected ? ' selected' : ''}`,
-      style: `--fill:${Math.min(1, m.blockVSize / cfg.blockVsize)}`,
+      style: `--fill:${card.fill}`,
       onclick: () => handlers.onSelectNext(),
     },
-      el('b', {}, 'Next'),
-      el('span', {}, `${F.number(m.nTx)} tx`),
-      el('span', {}, `median ${F.rate(m.medianFee)} sat/vB`),
-      el('span', {}, `range ${F.rate(lo)}–${F.rate(hi)}`),
-      el('span', {}, `${F.btc(m.totalFees)} fees`));
+      el('b', {}, card.title),
+      card.lines.map((line) => el('span', {}, line)));
   }
 
   const EDGE = 72; // the ends of the row fade out: a card must stay clear of them

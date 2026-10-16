@@ -64,8 +64,5 @@
     return d !== null && (d <= radius || isKnown(id));
   }
 
-  /** Fill of a block as a percentage of the 4 MWU capacity. */
-  const fillPercent = (b) => ((b.weight || 0) / BTC.config.scene.blockWeight) * 100;
-
-  BTC.blocks = { merge, sameList, tipOf, windowAround, windowStart, slotDistance, isNear, wantsDetail, fillPercent };
+  BTC.blocks = { merge, sameList, tipOf, windowAround, windowStart, slotDistance, isNear, wantsDetail };
 })();

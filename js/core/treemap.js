@@ -61,7 +61,7 @@
    * (txs.approx, vsize = 1): whole platform. Returns parallel arrays: list (txs in layout order), rects, heights, and
    * colors (Float32Array, 3 per tx), plus `free` (the rectangles left empty) and `scale` (area per vB).
    */
-  function layoutBlock(txs, order, capacity = S.blockVsize) {
+  function layoutBlock(txs, order, capacity = BTC.chain.capacity.size) {
     const list = [...txs.filter((x) => x.coinbase), ...orderTxs(txs.filter((x) => !x.coinbase), order)];
     const scale = (S.size * S.size) / capacity;
     if (!list.length) return { ...finish(list, []), free: [{ x: 0, y: 0, w: S.size, h: S.size }], scale };
@@ -151,7 +151,7 @@
 
     function relayout(txs, order) {
       const total = txs.reduce((s, t) => s + (t.coinbase ? 0 : Math.max(1, t.vsize)), 0);
-      const L = layoutBlock(txs, order, Math.max(S.blockVsize, total * HEADROOM));
+      const L = layoutBlock(txs, order, Math.max(BTC.chain.capacity.size, total * HEADROOM));
       placed = new Map(L.list.map((t, k) => [t.txid, L.rects[k]]));
       free = L.free.filter((r) => r.w * r.h >= MIN_FREE);
       scale = L.scale;
@@ -181,7 +181,7 @@
    * proportional to vsize, a full block = the whole platform) and the same height rule (fee rate). The footprint is a square.
    */
   function nominalTower(vsize, rate) {
-    const side = Math.sqrt((Math.max(1, vsize) * S.size * S.size) / S.blockVsize);
+    const side = Math.sqrt((Math.max(1, vsize) * S.size * S.size) / BTC.chain.capacity.size);
     return { w: side, h: side, height: BTC.colors.towerHeight(rate) };
   }
 

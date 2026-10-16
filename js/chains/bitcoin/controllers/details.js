@@ -1,17 +1,14 @@
 // Opening the detail dialog: fetches the data and hands it to the view. Only the latest request may update the dialog
-// (an older, slower response never overwrites a newer one).
+// (an older, slower response never overwrites a newer one: see controllers/requests.js).
 (() => {
   'use strict';
   const BTC = (window.BTC = window.BTC || {});
 
-  let seq = 0;
-  /** Starts a request: returns its token. Any earlier request becomes stale. */
-  const begin = () => ++seq;
-  const isCurrent = (token) => token === seq;
+  const { begin, isCurrent } = BTC.requests;
 
   // These requests open the dialog (as "Loading…") before the response arrives: if the user has closed it meanwhile, a
   // late response must not open it again.
-  const wanted = (token) => isCurrent(token) && BTC.ui.detail.isOpen();
+  const wanted = (token) => isCurrent(token) && BTC.ui.dialog.isOpen();
 
   async function openTx(txid) {
     const token = begin();
@@ -82,5 +79,5 @@
   /** The address page that is open: { address, summary, txs } (null when the dialog shows something else, or the list failed). */
   const shownAddress = () => (shown && wanted(shown.token) ? shown : null);
 
-  BTC.details = { begin, isCurrent, openTx, openBlock, openAddress, moreAddressTxs, shownAddress };
+  BTC.details = { openTx, openBlock, openAddress, moreAddressTxs, shownAddress };
 })();

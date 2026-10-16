@@ -22,14 +22,14 @@
     return select.value;
   }
 
-  /** The fee scale legend: gradient and ticks come from the very stops the towers are colored with. */
+  /** The fee scale legend: gradient and ticks come from the very stops the towers are colored with (the chain's rates). */
   function renderLegend() {
-    const C = BTC.colors, at = (r) => `${(C.position(r) * 100).toFixed(1)}%`;
+    const C = BTC.colors, rates = BTC.chain.rates, at = (r) => `${(C.position(r) * 100).toFixed(1)}%`;
     const css = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
     $('#legend-bar').style.background = `linear-gradient(90deg, ${C.stops.map((s) => `${css(s.hex)} ${at(s.rate)}`).join(', ')})`;
-    $('#legend-ticks').replaceChildren(...[C.MIN_RATE, 1, 10, 100].map((r) =>
+    $('#legend-ticks').replaceChildren(...rates.ticks.map((r) =>
       el('span', { style: `left:${at(r)}`, class: r === C.MIN_RATE ? 'first' : '' }, String(r))));
-    $('#legend-max').textContent = `${C.MAX_RATE}+ sat/vB`; // the right end of the bar: this rate and above look the same
+    $('#legend-max').textContent = `${C.MAX_RATE}+ ${rates.unit}`; // the right end of the bar: this rate and above look the same
   }
 
   BTC.ui.hud = {
@@ -53,17 +53,15 @@
       pill.textContent = online ? 'live' : 'offline';
       pill.className = `pill ${online ? 'on' : 'off'}`;
     },
-    /** m: first projected block from the mempool (may be undefined). */
+    /** m: first projected block from the mempool (may be undefined). The sentence under the title is the chain's. */
     showNext(m) {
       $('#hud-title').textContent = 'Next block';
-      $('#hud-sub').textContent = m
-        ? `mempool projection · ${F.number(m.nTx)} tx · median ${F.rate(m.medianFee)} sat/vB`
-        : 'mempool projection';
+      $('#hud-sub').textContent = BTC.chain.nextLine(m);
       $('#hud-details').hidden = true;
     },
     showBlock(b) {
       $('#hud-title').textContent = `Block #${F.number(b.height)}`;
-      $('#hud-sub').textContent = `${F.number(b.tx_count)} tx · ${F.fixed(BTC.blocks.fillPercent(b))}% full · ${b.extras?.pool?.name ?? 'unknown miner'} · ${F.date(b.timestamp)}`;
+      $('#hud-sub').textContent = BTC.chain.blockLine(b);
       $('#hud-details').hidden = false;
     },
   };

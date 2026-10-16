@@ -61,7 +61,7 @@
     const request = ++liveRequest;
     if (state.detached) {
       let list;
-      try { list = await BTC.api.blocks(); } catch (e) {
+      try { list = await BTC.chain.data.latestBlocks(); } catch (e) {
         console.warn('blocks', e);
         setFollow(false);
         ui().hud.setMessage("Couldn't reload the latest blocks. Try again.");
@@ -99,7 +99,6 @@
     state.tip = Math.max(state.tip, b.height);
     if (!state.detached && state.blocks.some((x) => x.id === b.id)) return;
     sync().resetProjection(); // the next block is recomputed, whatever we are looking at
-    BTC.statsCtl.maybeRefresh(); // a new block moves the retarget progress
     if (state.detached) return; // browsing a searched block: the live list is reloaded when coming back
     state.blocks = BTC.blocks.merge(state.blocks, [b]);
     renderRow(b.id);
@@ -114,7 +113,7 @@
 
   /** Merges the latest blocks into the state (startup, and backfill after a WebSocket reconnect). */
   async function refreshBlocks() {
-    const list = await BTC.api.blocks();
+    const list = await BTC.chain.data.latestBlocks();
     state.tip = Math.max(state.tip, BTC.blocks.tipOf(list));
     if (state.detached) return; // the live list is rebuilt when coming back
     const merged = BTC.blocks.merge(state.blocks, list);
@@ -144,7 +143,7 @@
     let failed = false;
     ui().blocksRow.setMore({ disabled: true, title: 'Loading…', sub: ' ' });
     try {
-      const list = await BTC.api.blocksFrom(oldest.height - 1); // 15 blocks, newest first, starting at that height
+      const list = await BTC.chain.data.blocksFrom(oldest.height - 1); // a page of blocks, newest first, starting at that height
       if (!Array.isArray(list) || !list.length) throw new Error('no blocks');
       if (state.blocks.at(-1)?.id !== oldest.id) return; // the list was replaced meanwhile (search, back to live): drop this page
       state.blocks = BTC.blocks.merge(state.blocks, list);
@@ -166,23 +165,22 @@
 
   /**
    * Shows a block (by hash or height) in the 3D scene. A block outside the loaded history replaces the list by the
-   * blocks around it ("detached" from the live list). token: the request token of controllers/details.js.
+   * blocks around it ("detached" from the live list). token: a request token (controllers/requests.js).
    * Rejects (with `.status` for HTTP errors) when the block does not exist.
    */
   async function goToBlock(query, token) {
-    const details = BTC.details;
     if (!sync().active()) { // no 3D: open the details, after checking the block exists (a 404 lets the search try a tx instead)
-      const hash = query.hash ?? await BTC.api.blockHash(query.height);
-      await BTC.api.blockBasic(hash);
-      return details.openBlock(hash);
+      const hash = query.hash ?? await BTC.chain.data.hashOf(query.height);
+      await BTC.chain.data.heightOf(hash);
+      return BTC.chain.openBlock(hash);
     }
-    const height = query.height ?? (await BTC.api.blockBasic(query.hash)).height;
-    if (!details.isCurrent(token)) return;
+    const height = query.height ?? await BTC.chain.data.heightOf(query.hash);
+    if (!BTC.requests.isCurrent(token)) return;
     if (state.tip && height > state.tip) throw new Error('height above the latest block');
     let target = state.blocks.find((b) => b.height === height);
     if (!target) {
-      const list = await BTC.api.blocksFrom(Math.min(height + 2, state.tip || height + 2)); // 2 newer blocks + the target + older ones
-      if (!details.isCurrent(token)) return;
+      const list = await BTC.chain.data.blocksFrom(Math.min(height + 2, state.tip || height + 2)); // 2 newer blocks + the target + older ones
+      if (!BTC.requests.isCurrent(token)) return;
       target = list.find((b) => b.height === height);
       if (!target) throw new Error('no block at this height');
       state.detached = true;
@@ -190,7 +188,7 @@
       renderRow();
       sync().sync();
     }
-    ui().detail.close();
+    ui().dialog.close();
     focus(target.id); // manual choice: turns "follow" off and moves the camera (the 3D window slides with it)
   }
 

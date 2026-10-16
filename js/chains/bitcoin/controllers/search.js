@@ -4,8 +4,7 @@
   const BTC = (window.BTC = window.BTC || {});
 
   async function run(query) {
-    const details = BTC.details;
-    const token = details.begin(); // a newer search or detail request wins
+    const token = BTC.requests.begin(); // a newer search or detail request wins
     try {
       const q = BTC.search.classify(query);
       if (q.type === 'height') return await BTC.nav.goToBlock({ height: q.height }, token);
@@ -15,7 +14,7 @@
           try {
             if (kind === 'block') return await BTC.nav.goToBlock({ hash: q.hash }, token);
             const tx = await BTC.api.tx(q.hash);
-            if (details.isCurrent(token)) BTC.ui.detail.tx(tx);
+            if (BTC.requests.isCurrent(token)) BTC.ui.detail.tx(tx);
             return;
           } catch (e) {
             if (e.status !== 404) throw e;
@@ -26,7 +25,7 @@
       if (q.type === 'address') return await BTC.details.openAddress(q.address);
       BTC.ui.detail.message('Not recognized: enter a height, a block hash, a txid (64 hex) or an address.');
     } catch (e) {
-      if (details.isCurrent(token)) BTC.ui.detail.message(`Not found (${e.message})`);
+      if (BTC.requests.isCurrent(token)) BTC.ui.detail.message(`Not found (${e.message})`);
     }
   }
 

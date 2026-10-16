@@ -1,23 +1,18 @@
-// The detail dialog: renders blocks and transactions. Views only: data is fetched by controllers/details.js.
+// What the detail dialog shows for Bitcoin: blocks, transactions, addresses. Views only: data is fetched by controllers/details.js;
+// the dialog itself (opening, closing, "Loading…") is the engine's: ui/dialog.js.
 (() => {
   'use strict';
   const BTC = (window.BTC = window.BTC || {});
-  const { $, el } = BTC.dom;
+  const { el } = BTC.dom;
   const F = BTC.format;
   const MAX_IO_ROWS = 20; // inputs / outputs shown per transaction
 
-  const dialog = $('#detail');
-  const body = $('#detail-body');
   let handlers = {};
   let page = null; // the address page being shown (null when the dialog shows something else); see address() / moreTxs()
 
   function show(...nodes) {
     page = null; // whatever the dialog showed is replaced
-    body.replaceChildren(...nodes.flat().filter((n) => n != null && n !== false)); // flatten arrays (e.g. a list of transactions), skip absent parts
-    if (!dialog.open) {
-      dialog.showModal();
-      dialog.focus(); // showModal() focuses the close button, which then shows a focus ring on top of its hover border
-    }
+    BTC.ui.dialog.show(...nodes);
   }
 
   const fields = (rows) => el('dl', {}, rows.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)]));
@@ -73,26 +68,9 @@
      * handlers: onOpenTx(txid), onOpenBlock(hash), onOpenAddress(address), onMoreTxs() (older transactions of the address),
      * onShowInScene() (the address page offers to show its transactions in the 3D scene; absent without 3D)
      */
-    init(h) {
-      handlers = h;
-      $('#close').addEventListener('click', () => dialog.close());
-      // Close on a click on the backdrop only (not on the dialog's own padding), and only if the press began there too: a
-      // tap on the 3D scene opens the dialog on pointerup, and the click the browser synthesizes right after lands on the
-      // backdrop; it has no press of its own on the dialog and must not close it.
-      const onBackdrop = (e) => {
-        if (e.target !== dialog) return false;
-        const r = dialog.getBoundingClientRect();
-        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
-      };
-      let pressedOnBackdrop = false;
-      dialog.addEventListener('pointerdown', (e) => { pressedOnBackdrop = onBackdrop(e); });
-      dialog.addEventListener('click', (e) => { if (pressedOnBackdrop && onBackdrop(e)) dialog.close(); pressedOnBackdrop = false; });
-      dialog.addEventListener('close', () => { pressedOnBackdrop = false; });
-    },
-    close() { if (dialog.open) dialog.close(); },
-    isOpen: () => dialog.open,
-    loading() { show(el('p', { class: 'muted' }, 'Loading…')); },
-    message(text) { show(el('p', {}, text)); },
+    init(h) { handlers = h; },
+    loading() { page = null; BTC.ui.dialog.loading(); },
+    message(text) { page = null; BTC.ui.dialog.message(text); },
 
     /** tx: full transaction from /tx/:txid */
     tx(tx) {
@@ -117,7 +95,7 @@
         ['Date', `${F.date(b.timestamp)} (${F.ago(b.timestamp)})`],
         ['Transactions', F.number(b.tx_count)],
         ['Size', `${(b.size / 1e6).toFixed(2)} MB · ${(b.weight / 1e6).toFixed(2)} MWU`],
-        ['Fill', `${F.fixed(BTC.blocks.fillPercent(b))}% of capacity (4 MWU)`],
+        ['Fill', `${F.fixed(BTC.chain.fill(b) * 100)}% of capacity (4 MWU)`],
         ['Miner', x?.pool?.name ?? '—'],
         ['Median fee', x?.medianFee != null ? `${x.medianFee.toFixed(1)} sat/vB` : '—'],
         ...(x?.totalFees != null ? [['Total fees', F.btc(x.totalFees)]] : []),

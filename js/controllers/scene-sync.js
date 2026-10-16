@@ -8,7 +8,7 @@
   const state = BTC.state;
 
   let scene = null;
-  const projection = BTC.projection.create();
+  const projection = BTC.chain.createPending(); // the towers of the next block, as the chain describes them
   // block id -> { promise, txs }: the contents of a block (txs is set once they are here), the most recently used last.
   // Complete contents are kept (up to S.cache blocks); the same array reference avoids rebuilding the scene.
   const cache = new Map();
@@ -47,18 +47,6 @@
 
   // ----- mined blocks -----
 
-  /** Block contents: the "summary" gives everything in one call; otherwise fall back to the bare txids (provisional). */
-  async function fetchTxs(b) {
-    try {
-      const rows = await BTC.api.blockSummary(b.id);
-      // A freshly mined block may have an incomplete summary (sometimes only the coinbase): drawing it would give a
-      // wrong scene (one giant tower). Reject it and retry later.
-      if (BTC.txs.isCompleteSummary(rows, b.tx_count)) return BTC.txs.fromSummary(rows);
-      console.warn(`block ${b.height} summary incomplete (${Array.isArray(rows) ? rows.length : '?'}/${b.tx_count || 0}), retrying later`);
-    } catch (e) { console.warn('summary unavailable, falling back to /txids', e); }
-    return BTC.txs.provisional(await BTC.api.blockTxids(b.id), b.extras?.medianFee);
-  }
-
   /** Starts the waiting downloads while slots are free: the block nearest to the camera first; one no longer near is dropped. */
   function pump() {
     while (running < S.loads && queue.length) {
@@ -69,7 +57,7 @@
       running++;
       let timer;
       const timeout = new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('timeout')), S.loadTimeoutMs); });
-      Promise.race([fetchTxs(b), timeout]).then(resolve, reject).finally(() => { clearTimeout(timer); running--; pump(); });
+      Promise.race([BTC.chain.data.blockTowers(b), timeout]).then(resolve, reject).finally(() => { clearTimeout(timer); running--; pump(); });
     }
   }
 
@@ -104,7 +92,7 @@
 
   /** Light shape of a block: a solid block as high as it is full, colored by its median fee. */
   function simplify(b) {
-    scene.setSummary(b.id, { fill: BTC.blocks.fillPercent(b) / 100, rate: b.extras?.medianFee });
+    scene.setSummary(b.id, { fill: BTC.chain.fill(b), rate: BTC.chain.typicalRate(b) });
     light.add(b.id);
   }
 
@@ -215,7 +203,7 @@
     projShown = false;
     clearTimeout(projTimer); projTimer = 0;
     if (scene) scene.setTxs(S.nextId, null);
-    BTC.socket.trackNextBlock();
+    BTC.chain.live.trackNext();
   }
 
   BTC.sceneSync = {

@@ -18,7 +18,7 @@
         const stream = [];
         for (const t of list) {
           if (!t || !t.txid || seen.has(t.txid)) continue;
-          if (!isAnimatedElsewhere(t.txid)) stream.push({ rate: BTC.txs.feeRate(t), vsize: t.vsize });
+          if (!isAnimatedElsewhere(t.txid)) stream.push({ rate: t.vsize && t.fee != null ? t.fee / t.vsize : undefined, vsize: t.vsize }); // price per unit of size
           seen.add(t.txid);
           total++;
           stamps.push(now);

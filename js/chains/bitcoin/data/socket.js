@@ -8,7 +8,7 @@
   const send = (obj) => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); };
 
   function open() {
-    ws = new WebSocket(BTC.config.ws);
+    ws = new WebSocket(BTC.chain.config.ws);
     ws.onopen = () => {
       retry = 0;
       handlers.onStatus?.(true);

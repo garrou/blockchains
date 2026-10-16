@@ -19,7 +19,7 @@
   }
 
   /** Refreshes unless it was done very recently. */
-  function maybeRefresh() { if (Date.now() - last > BTC.config.stats.minGapMs) refresh(); }
+  function maybeRefresh() { if (Date.now() - last > BTC.chain.config.stats.minGapMs) refresh(); }
 
   BTC.statsCtl = { refresh, maybeRefresh };
 })();

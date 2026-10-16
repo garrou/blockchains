@@ -5,7 +5,7 @@
   'use strict';
   const BTC = (window.BTC = window.BTC || {});
   const S = BTC.config.scene;
-  const C = BTC.config.wallet;
+  const C = BTC.chain.config.wallet;
   const state = BTC.state;
   const F = BTC.format;
 
@@ -120,7 +120,7 @@
     if (e.pending) { BTC.nav.focus(S.nextId); return; }
     if (state.blocks.some((b) => b.id === e.hash)) { BTC.nav.focus(e.hash); return; }
     try { // a block outside the loaded list: like a search for it
-      await BTC.nav.goToBlock({ hash: e.hash }, BTC.details.begin());
+      await BTC.nav.goToBlock({ hash: e.hash }, BTC.requests.begin());
     } catch (err) {
       console.warn('wallet jump', err);
       ui().hud.setMessage("Couldn't open this block right now.");

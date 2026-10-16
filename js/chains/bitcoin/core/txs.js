@@ -14,7 +14,7 @@
   }
 
   /** A block summary is complete when it has (almost) as many rows as the block has transactions. */
-  function isCompleteSummary(rows, expectedCount, minRatio = BTC.config.scene.summaryMinRatio) {
+  function isCompleteSummary(rows, expectedCount, minRatio = BTC.chain.config.summaryMinRatio) {
     return Array.isArray(rows) && rows.length > 0 && rows.length >= (expectedCount || 0) * minRatio;
   }
 

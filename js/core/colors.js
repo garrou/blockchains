@@ -1,13 +1,13 @@
 // Fee-rate -> color / tower height. Pure math, no Three.js: colors are plain [r, g, b] arrays (0..1, may exceed 1:
-// values above 1 make the bloom pass "glow").
+// values above 1 make the bloom pass "glow"). The scale itself (lowest and highest rate, color stops) is the chain's:
+// BTC.chain.rates, so BTC.defineChain() must have run before this file.
 (() => {
   'use strict';
   const BTC = (window.BTC = window.BTC || {});
 
-  // Fee rates (sat/vB) run from the lowest relay fee, 0.1, to MAX_RATE (above: same color and height). The towers and the
-  // legend are drawn from the same stops, on a logarithmic scale.
-  const MIN_RATE = 0.1, MAX_RATE = 300;
-  const STOPS = [[MIN_RATE, 0x5a3d99], [1, 0x2d3a9e], [4, 0x1f8fe0], [10, 0x22c9a6], [25, 0x7ddc4a], [60, 0xf2d33c], [120, 0xf7931a], [MAX_RATE, 0xff3d6e]];
+  // Rates run from MIN_RATE to MAX_RATE (above: same color and height). The towers and the legend are drawn from the
+  // same stops, on a logarithmic scale.
+  const { min: MIN_RATE, max: MAX_RATE, stops: STOPS } = BTC.chain.rates;
   const rgb = (hex) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
   const STOPS_RGB = STOPS.map(([rate, hex]) => [rate, rgb(hex)]);
 
