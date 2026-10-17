@@ -1435,3 +1435,16 @@ body.home h1 {
     transform: none;
   }
 }
+
+/* the button of an address page that lights its transactions in the 3D scene (the chains that can track an address) */
+.show3d {
+  display: block;
+  margin: 0 0 .5rem;
+  color: var(--mine);
+  border-color: var(--mine);
+}
+
+.show3d:hover {
+  border-color: var(--mine);
+  background: color-mix(in srgb, var(--mine) 14%, var(--panel));
+}

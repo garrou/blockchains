@@ -98,17 +98,3 @@
   display: block;
   margin: 1rem auto 0;
 }
-
-/* ---------- tracked wallet: "Show in 3D" button, the panel over the scene ---------- */
-
-.show3d {
-  display: block;
-  margin: 0 0 .5rem;
-  color: var(--mine);
-  border-color: var(--mine);
-}
-
-.show3d:hover {
-  border-color: var(--mine);
-  background: color-mix(in srgb, var(--mine) 14%, var(--panel));
-}

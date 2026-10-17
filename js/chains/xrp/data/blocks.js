@@ -15,7 +15,7 @@
     return err;
   }
 
-  const light = (by, opts) => X.ws.call('ledger', { ...by, transactions: true, expand: false }, opts).then(X.blocks.normalize);
+  const light = (by, opts) => X.ws.call('ledger', { ...by, transactions: true, expand: false }, { priority: 1, ...opts }).then(X.blocks.normalize); // the page loading its list: after what a person asked
 
   /** The ledgers of these indexes (newest first). One that is missing is skipped; none at all is a failure to retry. */
   async function ledgers(indexes) {
@@ -53,7 +53,7 @@
   let latest = null;       // { height, rows } of the newest ledger whose transactions were read: the feed's source
 
   async function load(id) {
-    const res = await X.ws.call('ledger', { ledger_hash: id, transactions: true, expand: true });
+    const res = await X.ws.call('ledger', { ledger_hash: id, transactions: true, expand: true }, { priority: 1 }); // drawn in the scene: after a person's request
     const block = X.blocks.normalize(res);
     const list = res.ledger?.transactions ?? [];
     const rows = list.map(X.txs.row).filter(Boolean);

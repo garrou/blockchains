@@ -13,8 +13,9 @@
 
   let ctl = null, open = false, nextId = 1, handlers = {};
   let inFlight = 0, pausedUntil = 0, pumpTimer = 0;
-  const waiting = new Map(); // id -> { resolve, reject, timer, msg, sent (on the wire), counted (takes one of the places), retries, background }
-  let queue = [];            // commands not sent yet: the ones a person asked for first, the background ones after
+  const waiting = new Map(); // id -> { resolve, reject, timer, msg, sent (on the wire), counted (takes one of the places), retries, priority }
+  let queue = [];            // commands not sent yet, by priority (0 a person is waiting, 1 the page loading what it draws, 2 background), then in order
+  const busyListeners = new Set();
 
   function failure(msg) {
     const err = new Error(msg.error_message || msg.error || 'request failed');
@@ -54,20 +55,27 @@
     e.counted = false;
   }
 
+  /** Puts a command in the queue before the first one of a lower priority (after the ones of its own priority, unless `first`). */
+  function enqueue(e, first = false) {
+    const i = queue.findIndex((q) => (first ? q.priority >= e.priority : q.priority > e.priority));
+    if (i < 0) queue.push(e); else queue.splice(i, 0, e);
+  }
+
   /**
    * One command: resolves with the `result`, rejects with an Error (`.status` 404 when the thing does not exist). Commands wait their
-   * turn (see pump) and while the socket is down. opts.background: for what nobody is waiting for (it goes after the others).
+   * turn (see pump) and while the socket is down. opts.priority: 0 (default) a person is waiting for it (a dialog, a search), 1 the page
+   * is loading what it draws, 2 (opts.background) nobody is waiting for it. A command of a higher priority is sent first, retries included.
    */
   function call(command, params = {}, opts = {}) {
     return new Promise((resolve, reject) => {
       const id = nextId++;
-      const e = { resolve, reject, msg: { id, command, ...params }, sent: false, retries: 0, background: !!opts.background, timer: 0 };
-      e.queueTimer = setTimeout(() => { // still not sent after a long wait: give up
-        if (!e.sent && waiting.delete(id)) { queue = queue.filter((q) => q !== e); reject(new Error('timeout')); }
-      }, cfg().queueTimeoutMs);
+      const priority = opts.priority ?? (opts.background ? 2 : 0);
+      const e = { resolve, reject, msg: { id, command, ...params }, sent: false, retries: 0, priority, timer: 0 };
+      e.queueTimer = setTimeout(() => { // still not sent after a long wait: give up (a person waits less than the page does)
+        if (!e.sent && waiting.delete(id)) { queue = queue.filter((q) => q !== e); reject(new Error(priority === 0 ? 'the server is busy' : 'timeout')); }
+      }, priority === 0 ? cfg().userQueueTimeoutMs : cfg().queueTimeoutMs);
       waiting.set(id, e);
-      const firstBackground = queue.findIndex((q) => q.background);
-      if (e.background || firstBackground < 0) queue.push(e); else queue.splice(firstBackground, 0, e); // a person's command goes before the background ones
+      enqueue(e);
       pump();
     });
   }
@@ -95,8 +103,9 @@
         release(e);
         e.retries++; e.sent = false;
         waiting.set(e.msg.id, e);
-        queue.unshift(e);
+        enqueue(e, true);
         pausedUntil = Math.max(pausedUntil, Date.now() + retryDelay(msg));
+        busyListeners.forEach((cb) => cb(Math.ceil((pausedUntil - Date.now()) / 1000)));
         pump();
         return;
       }
@@ -121,6 +130,8 @@
 
   X.ws = {
     call,
+    /** cb(seconds) is called when the server asks the page to wait ("tooBusy"): to tell the person who is waiting. Returns a function that stops it. */
+    onBusy(cb) { busyListeners.add(cb); return () => busyListeners.delete(cb); },
     /** handlers: onSubscribed(result) the subscription is accepted, onLedger(msg) a ledger closed, onClose(). */
     start(h) {
       handlers = h;

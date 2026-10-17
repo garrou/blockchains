@@ -36,7 +36,7 @@
     show,
     close() { if (dialog.open) dialog.close(); },
     isOpen: () => dialog.open,
-    loading() { show(el('p', { class: 'muted' }, 'Loading…')); },
+    loading(text = 'Loading…') { show(el('p', { class: 'muted' }, text)); },
     message(text) { show(el('p', {}, text)); },
   };
 })();

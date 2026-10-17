@@ -90,8 +90,8 @@ Provisional data: if a mined block's towers are not known precisely yet (`approx
 | next block | the mempool's projection, pushed by the server | a guess built from the pending transactions the page has seen (best tip first) | none: no mempool can be read (`nextBlock: false`) | none (`nextBlock: false`) |
 | data | mempool.space REST + WebSocket | a node: JSON-RPC + WebSocket (`eth_subscribe`) | a node: JSON-RPC + WebSocket (`slotSubscribe`) | a server: **one WebSocket** for the commands and the ledgers that close (`subscribe` to `ledger`) |
 | accent | orange | Ethereum blue | Solana purple (the scale ends in the logo's green) | XRP blue |
-| address page | totals + transactions | balance, nonce, contract or wallet, token name, ENS | balance, owner program, token holdings, latest transactions | balance, objects owned, latest transactions |
-| tracked address in 3D ("Show in 3D") | yes | **no** | **no** | not yet (`account_tx` would allow it) |
+| address page | totals + transactions | balance, nonce, contract or wallet, token name, ENS | balance, owner program, token holdings, latest transactions | balance, objects owned, latest transactions, "Show in 3D" |
+| tracked address in 3D ("Show in 3D") | yes | **no** | **no** | yes (`account_tx`: validated transactions, a page at a time) |
 
 The statistics bar of each chain ends with **Transactions / day**. How it is counted depends on what the chain lets a page read:
 
@@ -126,9 +126,17 @@ and a `legend` of kinds (see `legend` in `js/core/chain.js`). The footprint is t
 (the `AffectedNodes` of its metadata); the height is the fee in multiples of the reference fee, flat for almost all and a spike for
 the rare one that paid more. The page needs no HTTP request: the commands (`ledger`, `tx`, `account_info`, `account_tx`, `fee`) travel
 over the same WebSocket as the ledgers that close (`data/ws.js`), which also avoids asking the servers for cross-origin permission.
+The tracked account (`controllers/wallet.js`, `core/wallet.js`) works like the Bitcoin one: the panel over the scene lists the account's
+transactions (a click goes to their ledger), their towers glow and a beacon rises from each, the others are dimmed. It reads
+`account_tx` (newest first, a `marker` leads to the next page: "Load older") and reloads every 10 s. The change of XRP balance of each
+line comes from the metadata (the account's `AccountRoot`); a transaction that did not move XRP (an order, an issued currency) shows
+its kind instead. The public servers do not all keep the whole history: the list goes back as far as the server's.
+
 The public servers give each client a budget (about 2,000 units per 10 seconds) and answer `tooBusy` beyond it. `data/ws.js` therefore
 keeps at most 4 commands out at once, serves a person's request before the background ones (the estimate of the day), and when a
-server says `retry in ~6379ms` it stops sending for that long and asks again (up to 4 times, then the dialog says why).
+server says `retry in ~6379ms` it stops sending for that long and asks again (up to 4 times, then the dialog says why). Commands have a
+priority (0 a person is waiting, 1 the page loading what it draws, 2 background): a click on a tower is not queued behind ledger reads,
+and while the server asks to wait the dialog says so.
 The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
 
 Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit, and their operators see

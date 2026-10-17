@@ -80,6 +80,20 @@
         <div id="tip3d" class="tooltip" hidden></div>
         <div id="scene-msg" class="scene-msg"></div>
       </div>
+      <aside id="wallet" class="wallet" aria-label="Tracked address" hidden>
+        <div class="w-head">
+          <button type="button" id="wallet-address" class="link mono"></button>
+          <button type="button" id="wallet-refresh" class="w-btn" aria-label="Reload" title="Reload now">↻</button>
+          <button type="button" id="wallet-toggle" class="w-btn" aria-label="Hide the list" aria-expanded="true" title="Hide the list">▾</button>
+          <button type="button" id="wallet-clear" class="w-btn" aria-label="Stop tracking" title="Stop tracking">✕</button>
+        </div>
+        <p id="wallet-sum" class="w-sum"></p>
+        <div class="w-body">
+          <ul id="wallet-list" class="js-scroll"></ul>
+          <button type="button" id="wallet-more" class="w-more" hidden>Load older</button>
+          <label class="w-dim"><input type="checkbox" id="wallet-dim" checked> Dim the other transactions</label>
+        </div>
+      </aside>
       <div class="hud hud-bottom">
         <div class="legend" aria-label="Kinds of transaction">
           <div class="legend-scale"><i id="legend-bar"></i><span id="legend-ticks"></span></div>
@@ -143,6 +157,7 @@
   <script defer src="js/chains/xrp/core/blocks.js"></script>
   <script defer src="js/chains/xrp/core/txs.js"></script>
   <script defer src="js/chains/xrp/core/search.js"></script>
+  <script defer src="js/chains/xrp/core/wallet.js"></script>
   <script defer src="js/core/colors.js"></script>
   <script defer src="js/core/treemap.js"></script>
   <script defer src="js/core/blocks.js"></script>
@@ -162,6 +177,7 @@
   <script defer src="js/ui/blocks-row.js"></script>
   <script defer src="js/ui/hud.js"></script>
   <script defer src="js/ui/dialog.js"></script>
+  <script defer src="js/ui/tracker.js"></script>
   <script defer src="js/chains/xrp/ui/detail.js"></script>
   <script defer src="js/ui/feed.js"></script>
   <script defer src="js/chains/xrp/ui/stats-bar.js"></script>
@@ -171,6 +187,7 @@
   <script defer src="js/controllers/navigation.js"></script>
   <script defer src="js/chains/xrp/controllers/details.js"></script>
   <script defer src="js/chains/xrp/controllers/search.js"></script>
+  <script defer src="js/chains/xrp/controllers/wallet.js"></script>
   <script defer src="js/controllers/feed.js"></script>
   <script defer src="js/chains/xrp/controllers/stats.js"></script>
   <!-- entry point -->

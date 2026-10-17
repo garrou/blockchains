@@ -42,7 +42,8 @@
       rpcTimeoutMs: 20000,
       maxInFlight: 4,                                 // commands out at once: the public servers give a budget (about 2,000 units per 10 s) and answer "tooBusy" beyond it
       maxRetries: 4,                                  // times a command refused as too busy is asked again (after the delay the server gives)
-      queueTimeoutMs: 60000,                          // a command that could not even be sent after this long is given up
+      queueTimeoutMs: 60000,                          // a command of the page that could not even be sent after this long is given up
+      userQueueTimeoutMs: 30000,                      // ... and one a person is waiting for (a dialog)
       baseFee: 10,                                    // the reference fee, in drops: a tower's rate is its fee in multiples of it
       pageSize: 15,                                   // ledgers per request of the list
       txRef: 300,                                     // a busy ledger, in transactions: what the card's fill bar is relative to
@@ -51,6 +52,7 @@
       feedPerBlock: 12,                               // transactions of each new ledger that go to the feed
       stats: { refreshMs: 15000, localMs: 2000, dayMs: 600000, dayDelayMs: 30000, daySamples: 36 }, // the statistics bar: asked of the server / redrawn from what is held; the transactions of a day estimated every dayMs from daySamples ledgers
       historyShown: 12,                               // transactions listed on an account page
+      wallet: { pageSize: 40, pollMs: 10000 },        // the tracked account (controllers/wallet.js): transactions per page, reload every pollMs
     },
 
     // The blue of the XRP Ledger (on the dark page)
@@ -99,6 +101,8 @@
         `touches ${f.number(t.nodes)} ledger objects`,
         t.moved != null ? `moves ${x.amount(t.moved, 5)}` : null,
       ];
+      const mine = X.walletCtl.entryOf(t.txid); // a tower of the tracked account says what it did to its balance
+      if (mine) lines.push(`★ ${X.wallet.amountText(mine)} for ${f.short(Explorer.state.wallet.address, 8, 6)}`);
       return lines.filter(Boolean).join('\n');
     },
 
@@ -121,12 +125,28 @@
     openTx: (hash) => X.details.openTx(hash),
     openBlock: (id) => X.details.openLedger(id),
     search: (text) => X.searchCtl.run(text),
-    onBlock: () => X.statsCtl.refreshLocal(),
-    onVisible: () => { X.statsCtl.refreshLocal(); X.statsCtl.refresh(); },
+    onHighlight: () => X.walletCtl.onSceneChange(),   // the towers lit for the tracked account may have changed
+    onBlock: () => { X.statsCtl.refreshLocal(); X.walletCtl.onBlock(); },
+    onVisible: () => { X.statsCtl.refreshLocal(); X.statsCtl.refresh(); X.walletCtl.catchUp(); },
 
-    start() {
+    start({ scene }) {
       const d = X.details;
-      Explorer.ui.detail.init({ onOpenTx: d.openTx, onOpenLedger: d.openLedger, onOpenAccount: d.openAddress });
+      Explorer.ui.detail.init({
+        onOpenTx: d.openTx, onOpenLedger: d.openLedger, onOpenAccount: d.openAddress,
+        onShowInScene: scene ? () => { // light up the transactions of the account page in the 3D scene
+          const a = d.shownAddress();
+          if (!a) return;
+          X.walletCtl.track(a.address, a.lines, a.marker);
+          Explorer.ui.dialog.close();
+        } : null,
+      });
+      if (scene) { // the panel of the tracked account lives over the 3D view
+        X.walletCtl.setDim(Explorer.ui.tracker.init({
+          format: (e) => X.wallet.amountText(e),
+          onJump: X.walletCtl.jump, onOpenAddress: d.openAddress, onRefresh: X.walletCtl.refresh,
+          onClear: X.walletCtl.clear, onMore: X.walletCtl.loadOlder, onDim: X.walletCtl.setDim,
+        }).dim);
+      }
       X.statsCtl.start();
     },
   });

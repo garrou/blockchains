@@ -66,7 +66,7 @@
       if (!(closeSeconds > 0)) throw new Error('no close time');
       const perDay = Math.round(86400 / closeSeconds), top = blocks[0].height;
       const indexes = Array.from({ length: cfg.daySamples }, (_, i) => top - Math.round((i * perDay) / cfg.daySamples));
-      const res = await Promise.allSettled(indexes.map((i) => X.data.light({ ledger_index: i }, { background: true })));
+      const res = await Promise.allSettled(indexes.map((i) => X.data.light({ ledger_index: i }, { priority: 2 })));
       const counts = res.filter((r) => r.status === 'fulfilled').map((r) => r.value.tx_count);
       if (counts.length < Math.ceil(cfg.daySamples / 2)) throw new Error('too few ledgers could be read');
       Explorer.ui.statsBar.renderDay({

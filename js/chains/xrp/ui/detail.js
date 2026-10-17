@@ -43,7 +43,7 @@
   const orderText = (tx) => `sells ${X.format.amount(tx.TakerGets)} for ${X.format.amount(tx.TakerPays)}`;
 
   Explorer.ui.detail = {
-    /** handlers: onOpenTx(hash), onOpenLedger(hash or index), onOpenAccount(address) */
+    /** handlers: onOpenTx(hash), onOpenLedger(hash or index), onOpenAccount(address), onShowInScene() (null without 3D) */
     init(h) { handlers = h; },
     loading() { Explorer.ui.dialog.loading(); },
     message(text) { Explorer.ui.dialog.message(text); },
@@ -91,9 +91,12 @@
       el('h3', {}, `Largest by ledger objects touched (${top.length})`), top.map(txCard));
     },
 
-    /** v: { address, data (account_data)|null, history|null (rows), historyError } */
+    /** v: { address, data (account_data)|null, history|null (lines: core/wallet.entry), historyError, canTrack } */
     address(v) {
       const f = X.format, a = v.data;
+      const track = handlers.onShowInScene && v.canTrack
+        ? el('button', { type: 'button', class: 'show3d', title: 'Light up the transactions of this account in the 3D scene', onclick: () => handlers.onShowInScene() }, 'Show in 3D')
+        : null;
       show(el('h2', {}, 'Account'), fields([
         ['Address', mono(v.address)],
         ['Balance', a ? f.xrp(a.Balance) : 'Does not exist on chain (never funded)'],
@@ -104,11 +107,13 @@
       ]),
       el('h3', {}, v.history ? `Latest transactions (${v.history.length})` : 'Latest transactions'),
       v.history && !v.history.length ? el('p', { class: 'muted' }, 'No transaction yet.') : null,
+      track,
       v.history ? el('ul', { class: 'xrp-history' }, v.history.map((h) => el('li', {},
-        link(F.short(h.hash, 14, 8), () => handlers.onOpenTx(h.hash), ' mono'),
+        link(F.short(h.txid, 14, 8), () => handlers.onOpenTx(h.txid), ' mono'),
         el('span', {}, kindDot(h.kind), h.label),
         status(h.result),
-        el('span', { class: 'muted' }, h.ledger != null ? `ledger ${F.number(h.ledger)}${h.date ? ` · ${F.ago(h.date)}` : ''}` : '')))) : el('p', { class: 'muted' }, `Couldn't load the transactions${v.historyError ? ` (${v.historyError})` : ''}.`));
+        el('b', { class: `amt ${h.net < 0n ? 'down' : 'up'}` }, X.wallet.amountText(h)),
+        el('span', { class: 'muted' }, h.height != null ? `ledger ${F.number(h.height)}${h.time ? ` · ${F.ago(h.time)}` : ''}` : '')))) : el('p', { class: 'muted' }, `Couldn't load the transactions${v.historyError ? ` (${v.historyError})` : ''}.`));
     },
   };
 })();
