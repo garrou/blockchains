@@ -13,6 +13,7 @@
 
   let ctl = null, open = false, nextId = 1, handlers = {};
   let inFlight = 0, pausedUntil = 0, pumpTimer = 0;
+  let refusals = [], lastNode = null; // when the pauses began (a burst counts once), and the server we are talking to
   let gap = 0, lastSent = 0; // pace: milliseconds between two commands (0: as fast as the places allow). A refusal sets it, each answer lowers it
   const waiting = new Map(); // id -> { resolve, reject, timer, msg, sent (on the wire), counted (takes one of the places), retries, priority }
   let queue = [];            // commands not sent yet, by priority (0 a person is waiting, 1 the page loading what it draws, 2 background), then in order
@@ -114,6 +115,7 @@
     ctl = c;
     open = true;
     inFlight = 0;
+    if (c.node !== lastNode) { lastNode = c.node; pausedUntil = 0; gap = 0; refusals = []; } // another server has a budget of its own
     const id = nextId++;
     const timer = setTimeout(() => { waiting.delete(id); Explorer.diag?.note('ws', 'subscription not answered in time'); c.close(); }, cfg().rpcTimeoutMs); // a server that does not answer the subscription is replaced
     waiting.set(id, {
@@ -134,7 +136,14 @@
         Explorer.diag?.count('xrp.tooBusy'); Explorer.diag?.note('ws', `${e.msg.command} refused: ${msg.error_message ?? msg.error}`);
         const fresh = pausedUntil <= Date.now(); // the refusals of the commands that were out together count once
         pausedUntil = Math.max(pausedUntil, Date.now() + retryDelay(msg));
-        if (fresh) gap = Math.min(cfg().pace.maxMs, Math.max(cfg().pace.startMs, gap * 2)); // the budget was spent: go slower from now on
+        if (fresh) {
+          gap = Math.min(cfg().pace.maxMs, Math.max(cfg().pace.startMs, gap * 2)); // the budget was spent: go slower from now on
+          const now = Date.now();
+          refusals = refusals.filter((t) => now - t < cfg().switchWindowMs);
+          refusals.push(now);
+          // the budget is the server's own: a second refusal in a short time, and the page tries another server instead of waiting here
+          if (refusals.length >= cfg().switchAfter && cfg().ws.length > 1) { refusals = []; ctl.fail('too busy'); }
+        }
         Explorer.diag?.gauge('xrp.pace', `${gap} ms between commands`);
         busyListeners.forEach((cb) => cb(Math.ceil((pausedUntil - Date.now()) / 1000)));
         pump();

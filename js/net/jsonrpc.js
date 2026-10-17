@@ -96,6 +96,7 @@
    */
   function socket({ urls, staleMs = 0, onOpen, onMessage, onClose }) {
     let ws = null, index = 0, retry = 0, watchdog = 0, timer = 0;
+    const bad = new Map(); // node -> until when it is not tried first: it closed on us at once, or the page left it (too busy)
     const heard = () => { // the connection is alive: the countdown starts again
       clearTimeout(watchdog);
       if (staleMs) watchdog = setTimeout(drop, staleMs);
@@ -121,6 +122,15 @@
     }
     const ctl = {
       /** Sends a message; false when it could not be (the socket is not open): the caller keeps it for the next connection. */
+      /** The node of the open connection (null: none). */
+      get node() { return ws ? ws.__node : null; },
+      /** The page gives this connection up (the node is too busy...): the next node is tried, and this one is left alone for `ms`. */
+      fail(why, ms = 120000) {
+        if (!ws) return;
+        bad.set(ws.__node, Date.now() + ms);
+        Explorer.diag?.note('ws', `leaving ${ws.__node}: ${why}`);
+        ws.close();
+      },
       send(obj) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return false;
         ws.send(JSON.stringify(obj));
@@ -134,7 +144,12 @@
       let sock;
       try {
         const list = urls();
-        sock = new WebSocket(list[index % list.length]); // throws on a bad URL, or a ws:// URL on an https page
+        let skipped = 0; // a node that closed on us at once, or that the page left, is not the first choice again for a while (all of them: the next one anyway)
+        while (skipped < list.length && (bad.get(list[(index + skipped) % list.length]) ?? 0) > Date.now()) skipped++;
+        if (skipped < list.length) index += skipped;
+        const node = list[index % list.length];
+        sock = new WebSocket(node); // throws on a bad URL, or a ws:// URL on an https page
+        sock.__node = node; sock.__t0 = Date.now();
       } catch (e) { console.warn('socket', e); lost(`could not open: ${e.message}`); return; }
       ws = sock;
       sock.onopen = () => { sock.__opened = true; heard(); Explorer.diag?.count('ws.open'); Explorer.diag?.gauge('ws.state', `open: ${sock.url}`); Explorer.diag?.note('ws', `open ${sock.url}`); onOpen(ctl.send, ctl); };
@@ -144,7 +159,10 @@
         try { msg = JSON.parse(ev.data); } catch { return; } // ignore malformed frames
         onMessage(msg, ctl);
       };
-      sock.onclose = (ev) => { if (ws === sock) lost(`closed by ${sock.url} (code ${ev.code}${ev.reason ? `: ${ev.reason}` : ''}${sock.__opened ? '' : ', never opened'})`); };
+      sock.onclose = (ev) => {
+        if (Date.now() - sock.__t0 < 3000) bad.set(sock.__node, Date.now() + 120000); // closed within 3 s: not worth trying first again
+        if (ws === sock) lost(`closed by ${sock.__node} (code ${ev.code}${ev.reason ? `: ${ev.reason}` : ''}${sock.__opened ? '' : ', never opened'})`);
+      };
       sock.onerror = () => sock.close();
     }
     open();

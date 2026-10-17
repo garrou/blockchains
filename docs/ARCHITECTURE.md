@@ -142,6 +142,10 @@ keeps at most 4 commands out at once, serves a person's request before the backg
 server says `retry in ~6379ms` it stops sending for that long and asks again (up to 4 times, then the dialog says why). Commands have a
 priority (0 a person is waiting, 1 the page loading what it draws, 2 background): a click on a tower is not queued behind ledger reads,
 and while the server asks to wait the dialog says so.
+The budget is each server's own, so the page does not sit and wait on a saturated one: a second refusal within 30 s (a burst of refusals counts once)
+makes it leave for the next server (`ctl.fail` in `js/net/jsonrpc.js`, which also keeps a node that closed on the page within 3 s, or that it left, from being tried
+first again for 2 minutes), and until the answers come back the commands go out one at a time (300 ms apart, doubling at each refusal up to 2 s). The diagnostics
+panel says why each connection ended (who closed it, with which code) and why the page left a server.
 A command that was on its way when the connection dropped is asked again on the next one (they are all reads), and the start-up shares
 one read of the latest ledgers instead of making two. The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
 
