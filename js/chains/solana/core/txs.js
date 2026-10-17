@@ -1,15 +1,27 @@
 // Solana transactions: from the node's JSON to the rows the dialogs show and the towers the scene draws. Pure.
-//   tower = { txid (the signature), vsize (compute units used), rate (micro-lamports paid per compute unit) } + what the tooltips say
+//   tower = { txid (the signature), vsize (compute units), rate (the priority fee paid, in lamports) } + what the tooltips say
 // What a transaction pays has two parts: 5000 lamports per signature (always), and an optional priority fee that buys a better
 // place in the block. The first is flat; the second is what people bid for: it is the "rate" of a tower (a tower of a plain
 // transaction that bid nothing is low and dark; a spike is someone who paid to be first). A vote (validators saying they
 // agree with a block) is most of the transactions of a block and bids nothing.
+//
+// The fee, the accounts and the balances come with the light read of a block (`accounts` detail), the compute units a
+// transaction really used do NOT (only the full read has them, several times heavier: not affordable for every block). So the
+// footprint of a tower is an ESTIMATE of its compute units from what it touches (see estimateCU); the real figure is on the
+// page of the transaction. The rate is exact, and it is the priority fee itself, not a price per unit, for the same reason.
 (() => {
   'use strict';
   const BTC = (window.BTC = window.BTC || {});
   const S = (BTC.sol = BTC.sol || {});
 
   const BASE_FEE = 5000; // lamports per signature
+
+  /**
+   * The compute units a transaction probably used, when the node did not say: a vote costs 2100, a plain SOL transfer a few
+   * hundred, anything else grows with the accounts it touches (a token transfer touches ~6 and costs ~15k, a swap through an
+   * aggregator ~25 and costs a couple of hundred thousand). A guess to give the towers a believable footprint, nothing more.
+   */
+  const estimateCU = (kind, nAccounts) => (kind === 'vote' ? 2100 : kind === 'transfer' ? 450 : Math.min(800000, Math.max(3000, 320 * nAccounts * nAccounts)));
 
   /**
    * One transaction of a block read with the `accounts` detail ({ transaction: { signatures, accountKeys }, meta }).
@@ -23,13 +35,14 @@
     const keys = rawKeys.map((k) => (typeof k === 'string' ? k : k.pubkey));
     const nSigs = tx.signatures.length;
     const fee = meta.fee ?? BASE_FEE * nSigs;
-    const cu = meta.computeUnitsConsumed > 0 ? meta.computeUnitsConsumed : null;
     const priority = Math.max(0, fee - BASE_FEE * nSigs);
     const kind = S.programs.kindOf(keys);
+    const exact = meta.computeUnitsConsumed > 0 ? meta.computeUnitsConsumed : null; // present only in the full read of a block
+    const cu = exact ?? estimateCU(kind, keys.length);
     const out = (meta.preBalances?.[0] ?? 0) - (meta.postBalances?.[0] ?? 0) - fee; // what the first account (the fee payer) sent away
     return {
-      sig: tx.signatures[0], payer: keys[0], fee, priority, cu, nAccounts: keys.length, nSigs, index,
-      rate: (priority * 1e6) / (cu ?? 1),
+      sig: tx.signatures[0], payer: keys[0], fee, priority, cu, estimated: exact == null, nAccounts: keys.length, nSigs, index,
+      rate: priority,                                      // lamports: what the transaction bid, exact
       ok: !meta.err, err: meta.err ?? null,
       kind, label: S.programs.labelOf(kind, keys),
       moved: kind === 'vote' || meta.err ? 0 : Math.max(0, out),
@@ -38,7 +51,7 @@
 
   /** The tower of a transaction. */
   function towerOf(r) {
-    return { txid: r.sig, vsize: r.cu ?? 200, rate: r.rate, fee: r.fee, priority: r.priority, kind: r.kind, label: r.label, ok: r.ok, payer: r.payer, moved: r.moved };
+    return { txid: r.sig, vsize: r.cu, estimated: r.estimated, rate: r.rate, fee: r.fee, priority: r.priority, kind: r.kind, label: r.label, ok: r.ok, payer: r.payer, moved: r.moved };
   }
 
   /** A line of the feed: the tower already has everything the row needs. */
@@ -103,5 +116,5 @@
       .sort((a, b) => Number((b.change < 0n ? -b.change : b.change) / 10n ** BigInt(b.decimals)) - Number((a.change < 0n ? -a.change : a.change) / 10n ** BigInt(a.decimals)));
   }
 
-  S.txs = { BASE_FEE, row, towerOf, feedItem, computeBudget, describeInstruction, balanceChanges, tokenChanges };
+  S.txs = { BASE_FEE, estimateCU, row, towerOf, feedItem, computeBudget, describeInstruction, balanceChanges, tokenChanges };
 })();

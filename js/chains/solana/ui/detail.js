@@ -32,9 +32,9 @@
       link(r.sig, () => handlers.onOpenTx(r.sig), ' mono'),
       el('div', { class: 'tx-meta' },
         el('span', {}, r.label, r.ok ? null : el('span', { class: 'sol-status bad' }, 'failed')),
-        el('b', { class: 'amt' }, `${X().price(r.rate)} µlamports/CU · ${r.cu != null ? X().cu(r.cu) : '?'} CU`)),
+        el('b', { class: 'amt' }, r.priority > 0 ? `${X().price(r.priority)} lamports priority` : 'no priority fee')),
       el('div', { class: 'sol-flow' }, addr(r.payer, { short: true }),
-        el('span', { class: 'amt' }, `fee ${X().sol(r.fee)}${r.priority > 0 ? ` (${X().sol(r.priority)} priority)` : ''}`)));
+        el('span', { class: 'amt' }, `fee ${X().sol(r.fee)}${r.priority > 0 ? ` (${X().sol(r.priority)} priority)` : ''} · ≈ ${X().cu(r.cu)} CU`)));
   }
 
   /** Rows of "address — amount" (balance changes). */
@@ -103,7 +103,7 @@
         b.blockHeight != null ? ['Block height', F.number(b.blockHeight)] : null,
         ['Parent', el('span', {}, `slot `, slotLink(b.parentSlot))],
         ['Transactions', `${F.number(rows.length)} · ${F.number(votes)} votes (${pct(votes, rows.length)}) · ${F.number(failed)} failed (${pct(failed, rows.length)})`],
-        ['Compute', `${F.number(cu)} units (${pct(cu, BTC.chain.capacity.size)} of ${x.cu(BTC.chain.capacity.size)})`],
+        ['Compute', `≈ ${F.number(cu)} units estimated (${pct(cu, BTC.chain.capacity.size)} of ${x.cu(BTC.chain.capacity.size)}): the light read of a block does not give the real figure, a transaction page does`],
         ['Fees', `${x.sol(fees, 6)} · ${x.sol(tips, 6)} of it priority fees paid by ${F.number(paying)} transactions`],
       ]),
       el('h3', {}, `Highest priority fees (${top.length})`), top.map(txCard));

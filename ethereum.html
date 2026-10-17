@@ -4,18 +4,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ξ Ethereum Explorer</title>
+  <title>Ethereum Explorer</title>
+  <link rel="icon" type="image/svg+xml" href="img/ethereum.svg">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/ethereum.css">
 </head>
 
 <body>
   <header class="top">
-    <h1>Ξ Explorer</h1>
+    <h1><a class="brand" href="index.html" title="All chains"><img class="logo" src="img/ethereum.svg" alt=""> Explorer</a></h1>
     <nav class="chains" aria-label="Blockchain">
-      <a href="index.html">₿ Bitcoin</a>
-      <a href="ethereum.html" aria-current="page">Ξ Ethereum</a>
-      <a href="solana.html">◎ Solana</a>
+      <a href="bitcoin.html"><img src="img/bitcoin.svg" alt="" width="16" height="16"> Bitcoin</a>
+      <a href="ethereum.html" aria-current="page"><img src="img/ethereum.svg" alt="" width="16" height="16"> Ethereum</a>
+      <a href="solana.html"><img src="img/solana.svg" alt="" width="16" height="16"> Solana</a>
     </nav>
     <form id="search" autocomplete="off">
       <input id="q" type="search" placeholder="Block, tx hash, address or .eth name" aria-label="Search">

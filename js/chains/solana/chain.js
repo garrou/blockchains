@@ -3,9 +3,10 @@
 // How Solana maps to the engine's ideas:
 //   block        one block out of every `sample` slots. Solana makes a block every 0.4 s; showing them all is more data than a
 //                public node lets a browser read, so the page shows one in 10 (a block every 4 s). The number people know is the slot
-//   tower        a transaction: its footprint is the COMPUTE UNITS it used, its height and color the PRIORITY FEE it paid per unit
-//                (micro-lamports per compute unit). The base fee (5000 lamports per signature) is the same for everybody; the priority
-//                fee is what people bid to be first. Most of a block is validators' votes: flat, dark, and numerous
+//   tower        a transaction: its footprint is its COMPUTE UNITS (estimated: the light read of a block does not give them, see
+//                core/txs.js), its height and color the PRIORITY FEE it paid, in lamports (exact). The base fee (5000 lamports per
+//                signature) is the same for everybody; the priority fee is what people bid to be first. Most of a block is
+//                validators' votes: flat, dark, and numerous
 //   next block   none: Solana has no mempool a page can read, so there is no "next" slot and no pending transaction
 // Like Ethereum, a plain node gives no per-transaction history for the 3D view to light up: there is no tracked address panel here.
 //
@@ -47,13 +48,13 @@
 
     // ----- numbers -----
     capacity: { size: 60e6 },                         // compute units in a full block (the limit has been rising: 48M, 50M, 60M...)
-    // Priority fees run from nothing (most transactions) to 1,000,000 micro-lamports per compute unit and more (the bots that bid
-    // to be first), on a logarithmic scale; tower heights follow the position on it. The scale goes like the logo: deep violet,
-    // Solana purple, blue, then green for the highest bids.
+    // Priority fees run from nothing (most transactions) to 10,000,000 lamports (0.01 SOL) and more (the bots that bid to be first),
+    // on a logarithmic scale; tower heights follow the position on it. The scale goes like the logo: deep violet, Solana purple,
+    // blue, then green for the highest bids. (Here the "rate" is the fee a transaction paid, not a price per unit of size.)
     rates: {
-      unit: 'µlamports/CU', min: 1, max: 1e6, heightScale: 'position',
-      stops: [[1, 0x241552], [30, 0x4a2aa8], [1000, 0x9945ff], [20000, 0x4d7bff], [100000, 0x00c2ff], [300000, 0x14f195], [1e6, 0xe6ff8a]],
-      ticks: [1, 100, 1e4, 1e6],
+      unit: 'lamports of priority fee', min: 100, max: 1e7, heightScale: 'position',
+      stops: [[100, 0x241552], [1e3, 0x4a2aa8], [1e4, 0x9945ff], [1e5, 0x4d7bff], [1e6, 0x00c2ff], [3e6, 0x14f195], [1e7, 0xe6ff8a]],
+      ticks: [100, 1e3, 1e4, 1e5, 1e6, 1e7],
       label: (r) => X().price(r),
     },
     fill: (b) => S.blocks.fill(b),
@@ -73,7 +74,7 @@
     // t: a tower of the newest block (see core/txs.js)
     feedRow: (t) => ({
       amount: t.moved > 0 ? X().sol(t.moved, 4) : '—',
-      rate: `${X().price(t.rate)} µlamports/CU`,
+      rate: t.priority > 0 ? `${X().price(t.priority)} lamports priority` : 'no priority fee',
     }),
 
     describeTower(t) {
@@ -81,8 +82,8 @@
       const lines = [
         f.short(t.txid, 12, 8),
         `${t.label}${t.ok ? '' : ' · FAILED'}`,
-        `${x.price(t.rate)} µlamports/CU · ${x.cu(t.vsize)} CU`,
-        `fee ${x.sol(t.fee, 6)}${t.priority > 0 ? ` (${x.sol(t.priority, 6)} priority)` : ''}`,
+        `fee ${x.sol(t.fee, 6)}${t.priority > 0 ? ` · ${x.price(t.priority)} lamports priority` : ' · no priority fee'}`,
+        `≈ ${x.cu(t.vsize)} compute units (estimated)`,
         t.moved > 0 ? `moves ${x.sol(t.moved, 5)}` : null,
       ];
       return lines.filter(Boolean).join('\n');

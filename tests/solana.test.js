@@ -84,10 +84,18 @@ test('a transaction row: priority fee, rate, what moved', () => {
     meta: { err: null, fee: 5000 + 20000, computeUnitsConsumed: 100000, preBalances: [10e9, 1, 1, 1, 1], postBalances: [9e9 - 25000, 1, 1, 1, 1] },
   });
   assert.strictEqual(swap.kind, 'swap'); assert.strictEqual(swap.priority, 20000); assert.strictEqual(swap.cu, 100000);
-  assert.strictEqual(swap.rate, 200000);                   // 20,000 lamports over 100,000 units = 200,000 micro-lamports per unit
+  assert.strictEqual(swap.estimated, false);               // the node gave the compute units: exact
+  assert.strictEqual(swap.rate, 20000);                    // the rate is the priority fee itself, in lamports
   assert.strictEqual(swap.moved, 1e9);                       // the payer sent 1 SOL away besides the fee
   const vote = S.txs.row({ transaction: { signatures: ['v'], accountKeys: keys('validator', 'vacc', VOTE) }, meta: { fee: 5000, computeUnitsConsumed: 2100, preBalances: [5e9, 0, 1], postBalances: [5e9 - 5000, 0, 1] } });
   assert.strictEqual(vote.kind, 'vote'); assert.strictEqual(vote.priority, 0); assert.strictEqual(vote.rate, 0); assert.strictEqual(vote.moved, 0);
+  // the light read of a block gives no compute units: estimated from the transaction (a vote 2100, a plain transfer small, more accounts = more)
+  const light = (n, extra = []) => S.txs.row({ transaction: { signatures: ['x'], accountKeys: keys('p', ...Array.from({ length: n - 1 }, (_, i) => `a${i}`), ...extra) }, meta: { fee: 5000, preBalances: [], postBalances: [] } });
+  assert.strictEqual(light(2, [VOTE]).cu, 2100); assert.strictEqual(light(2, [VOTE]).estimated, true);
+  assert.strictEqual(light(2, [SYSTEM]).cu, 450);
+  assert.ok(light(6, [TOKEN]).cu < light(25, [TOKEN, JUPITER]).cu, 'a swap through many accounts is bigger than a token transfer');
+  assert.ok(light(2, [TOKEN]).cu >= 3000);
+  assert.ok(Number.isFinite(light(40, [JUPITER]).cu));
   const failed = S.txs.row({ transaction: { signatures: ['f'], accountKeys: keys('p', 'd', SYSTEM) }, meta: { err: { InstructionError: [0, 'x'] }, fee: 5000, computeUnitsConsumed: 150, preBalances: [3e9, 0, 1], postBalances: [3e9 - 5000, 0, 1] } });
   assert.strictEqual(failed.ok, false); assert.strictEqual(failed.moved, 0);
   const two = S.txs.row({ transaction: { signatures: ['a', 'b'], accountKeys: ['p', 'q', SYSTEM] }, meta: { fee: 10000, computeUnitsConsumed: 300, preBalances: [2e9, 1e9, 1], postBalances: [2e9 - 10000 - 5e8, 1e9 + 5e8, 1] } });
@@ -95,7 +103,7 @@ test('a transaction row: priority fee, rate, what moved', () => {
   assert.strictEqual(two.moved, 5e8);
   assert.strictEqual(two.kind, 'transfer');
   const tower = S.txs.towerOf(swap);
-  assert.deepStrictEqual([tower.txid, tower.vsize, tower.rate], ['sig', 100000, 200000]);
+  assert.deepStrictEqual([tower.txid, tower.vsize, tower.rate], ['sig', 100000, 20000]);
   assert.ok(S.txs.towerOf(S.txs.row({ transaction: { signatures: ['n'], accountKeys: keys('p') }, meta: null })).vsize > 0, 'a transaction without meta still has a size');
 });
 

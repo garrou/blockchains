@@ -19,7 +19,7 @@
       const cu = rows.reduce((s, r) => s + (r.cu ?? 0), 0);
       BTC.ui.statsBar.renderMix({
         value: F.fixed(share((r) => r.kind === 'vote'), 0),
-        sub: `votes · ${F.fixed(share((r) => !r.ok))}% failed · ${F.fixed(share((r) => r.priority > 0))}% pay a priority fee · ${x.cu(cu)} CU used`,
+        sub: `votes · ${F.fixed(share((r) => !r.ok))}% failed · ${F.fixed(share((r) => r.priority > 0))}% pay a priority fee · ≈ ${x.cu(cu)} CU`,
       });
     }
     if (perf) BTC.ui.statsBar.renderTps(perf);

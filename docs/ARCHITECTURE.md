@@ -5,7 +5,8 @@ Each page is split in two:
 - the **engine**: everything that draws blocks and transactions in 3D, keeps the list of blocks, the feed and the camera.
   It knows nothing about any blockchain.
 - a **chain**: one object that gives the engine its numbers, its words and its data. Everything specific to a chain lives
-  in `js/chains/<name>/`. Three exist: Bitcoin (`index.html`), Ethereum (`ethereum.html`), Solana (`solana.html`).
+  in `js/chains/<name>/`. Three exist: Bitcoin (`bitcoin.html`), Ethereum (`ethereum.html`), Solana (`solana.html`); `index.html` is the home page that
+  links to them.
 
 The engine talks to the chain only through `BTC.chain`. The contract is written (and validated at startup) in
 [`js/core/chain.js`](../js/core/chain.js). `node scripts/check-boundary.js` fails if an engine file names a Bitcoin,
@@ -29,13 +30,15 @@ js/
     data/        where the data comes from (Bitcoin: mempool.space; Ethereum, Solana: a node, over JSON-RPC)
     ui/          the chain's screens (detail dialog content, statistics bar)
     controllers/ the chain's orchestration (detail requests, search, statistics; Bitcoin: tracked address)
-css/             style.css (shared), ethereum.css, solana.css
-index.html  ethereum.html  solana.html      one page per chain: same engine scripts, the chain's own scripts
+css/             style.css (shared), home.css (the home page), ethereum.css, solana.css
+index.html                                   home: the choice of a chain
+bitcoin.html  ethereum.html  solana.html     one page per chain: same engine scripts, the chain's own scripts
+img/                                         the logos of the chains (title, switch, home page)
 tests/           node tests/ethereum.test.js, tests/solana.test.js (pure logic of each chain), tests/jsonrpc.test.js (the shared client)
 ```
 
 All files are classic scripts sharing the global `BTC` (no modules, no build): the page works when double-clicked.
-The order of the `<script>` tags in `index.html` matters; it follows the layers above, and the chain is loaded
+The order of the `<script>` tags in each chain's page matters; it follows the layers above, and the chain is loaded
 right after `core/config.js` because some engine files read `BTC.chain` while loading.
 
 ## A short glossary of the 3D view
@@ -80,7 +83,7 @@ Provisional data: if a mined block's towers are not known precisely yet (`approx
 
 | | Bitcoin | Ethereum | Solana |
 |---|---|---|---|
-| tower (a transaction) | footprint = size (vB), height & color = fee rate (sat/vB) | footprint = gas used, height & color = gas price (gwei) | footprint = compute units used, height & color = priority fee per unit (µlamports/CU) |
+| tower (a transaction) | footprint = size (vB), height & color = fee rate (sat/vB) | footprint = gas used, height & color = gas price (gwei) | footprint = compute units (**estimated**), height & color = priority fee paid (lamports) |
 | full block | 1 Mvb | the gas limit (60M) | compute units (60M) |
 | a block | every ~10 min | every 12 s | every 0.4 s: the page shows **one in 10** (a block every 4 s), see `core/blocks.js` |
 | next block | the mempool's projection, pushed by the server | a guess built from the pending transactions the page has seen (best tip first) | none: no mempool can be read (`nextBlock: false`) |
@@ -99,7 +102,10 @@ the gas a transaction really used comes from the receipts (`eth_getBlockReceipts
 lacks that call; the next block is only a guess since a public node announces the transactions it sees, not the whole mempool.
 
 What is Solana-specific: most transactions of a block are validators' votes (flat dark towers); the base fee is the same for
-everybody (5000 lamports per signature), so the height of a tower is the priority fee, what people bid to be first.
+everybody (5000 lamports per signature), so the height of a tower is the priority fee, what people bid to be first (exact).
+The footprint is an estimate: the light read of a block (`accounts` detail) gives fee, accounts and balances but not the compute
+units each transaction used (only the full read does, several times heavier), so they are guessed from the accounts a transaction
+touches (`estimateCU` in `core/txs.js`). The real figure is on the page of the transaction.
 A Solana node refuses a block that holds a transaction newer than the version the client says it supports (error -32015, it names
 the version to use); `data/rpc.js` takes that number and asks again, so a new version of the format does not blank the page.
 
@@ -118,7 +124,8 @@ the IP address of the visitor and the addresses and transactions he looks up. Us
    detail screens, search and statistics. A chain without a hook simply has no such feature.
 5. Optionally state its look and shape: `theme.accent`, `rates.heightScale`, `rates.label`, `blockNumber`, and `nextBlock: false`
    if there is no pending block to show (see the list of optional parts in `js/core/chain.js`).
-6. Make a page: copy `ethereum.html` (the simplest) and load the new chain's scripts instead. No build step: scripts only.
+6. Make a page: copy `ethereum.html` (the simplest) and load the new chain's scripts instead; add the chain to the switch of the
+   other pages (a logo in `img/`) and a card to `index.html`. No build step: scripts only.
    A chain that speaks JSON-RPC can use `BTC.jsonrpc.create` / `BTC.jsonrpc.socket` from `js/net/jsonrpc.js`.
 7. Test it: the pure logic with a node test as in `tests/`; the page against a mocked node (the nodes used above cannot be
    called from a test: a fake one that answers the same JSON is enough to see every screen).

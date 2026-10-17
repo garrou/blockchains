@@ -11,7 +11,8 @@
 // of a block is only read by the chain's own functions below (cards, lines, fill...).
 // The tower model the engine draws (whatever the chain): { txid, vsize, rate, coinbase?, approx? }
 //   vsize: size in "capacity units" (virtual bytes for Bitcoin, gas for Ethereum...); the name is historical
-//   rate:  price per unit of size (sat/vB for Bitcoin, gwei per gas...); it gives the tower its color and height
+//   rate:  price per unit of size (sat/vB for Bitcoin, gwei per gas...); it gives the tower its color and height. It need not be
+//          a price per unit: Solana uses the priority fee the transaction paid, whatever its size
 //   coinbase: the block reward transaction (drawn gold, in the corner), approx: size unknown (provisional data)
 (() => {
   'use strict';
