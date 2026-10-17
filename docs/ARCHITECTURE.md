@@ -30,7 +30,7 @@ js/
     data/        where the data comes from (Bitcoin: mempool.space; Ethereum, Solana: a node, over JSON-RPC)
     ui/          the chain's screens (detail dialog content, statistics bar)
     controllers/ the chain's orchestration (detail requests, search, statistics; Bitcoin: tracked address)
-css/             style.css (shared), home.css (the home page), ethereum.css, solana.css
+css/             style.css (shared by every page, home page included), bitcoin.css, ethereum.css, solana.css (what only that chain's page needs)
 index.html                                   home: the choice of a chain
 bitcoin.html  ethereum.html  solana.html     one page per chain: same engine scripts, the chain's own scripts
 img/                                         the logos of the chains (title, switch, home page)
