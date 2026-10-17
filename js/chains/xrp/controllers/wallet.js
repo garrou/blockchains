@@ -5,7 +5,6 @@
   'use strict';
   const Explorer = (window.Explorer = window.Explorer || {});
   const X = (Explorer.xrp = Explorer.xrp || {});
-  const S = Explorer.config.scene;
   const state = Explorer.state;
   const cfg = () => Explorer.chain.config.wallet;
 
@@ -85,7 +84,11 @@
       const { lines, marker } = await page(w.address);
       if (state.wallet !== w) return; // stopped or replaced meanwhile
       const whole = !marker;
-      w.txs = X.wallet.merge(w.txs, lines, { whole });
+      // a page that shares nothing with the list, when the list is not empty and the page is full: more transactions came in this interval
+      // than a page holds, the ones in between are missing and cannot be told apart. Start again from this page; "Load older" goes down from it.
+      const known = new Set(w.txs.map((e) => e.txid));
+      const cut = w.txs.length > 0 && !whole && lines.length > 0 && !lines.some((e) => known.has(e.txid));
+      if (cut) { w.txs = [...lines]; w.pages = 1; } else w.txs = X.wallet.merge(w.txs, lines, { whole });
       if (w.pages === 1 || whole) w.olderMarker = marker; // no older page loaded yet: the marker of this page leads to the next one
       w.failed = false;
     } catch (e) {

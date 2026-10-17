@@ -81,7 +81,7 @@
   Explorer.feedCtl.poll();
   setInterval(Explorer.feedCtl.poll, Explorer.config.feed.pollMs);
   setInterval(Explorer.feedCtl.flush, Explorer.config.feed.flushMs);
-  setInterval(ui.blocksRow.refreshAgo, 5000); // "x s ago" has a one-second grain under a minute
+  setInterval(ui.blocksRow.refreshAgo, 5000); // "x s ago": refreshed every 5 s, which is fine for blocks that last 4 s or more
   document.addEventListener('visibilitychange', () => { // back to the tab: catch up now rather than at the next tick
     if (document.hidden) return;
     ui.blocksRow.refreshAgo();

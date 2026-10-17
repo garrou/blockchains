@@ -24,7 +24,7 @@
 
   /**
    * One account_tx entry -> a line of the wallet list: { txid, net (drops), pending: false, height (ledger index), time (Unix seconds),
-   * label, kind, ok, result, ledger (hash, when the server gives it) }. null for an entry we cannot read.
+   * label, kind, ok, result }. null for an entry we cannot read.
    */
   function entry(raw, address) {
     const r = X.txs.row(raw);
@@ -34,7 +34,7 @@
     const time = p.tx.date != null ? X.format.unixTime(p.tx.date) : p.extra.close_time_iso ? Date.parse(p.extra.close_time_iso) / 1000 : null;
     return {
       txid: r.hash, net: netOf(r.meta, address), pending: false, height: height == null ? null : Number(height), time,
-      label: r.label, kind: r.kind, ok: r.ok, result: r.result, ledger: p.extra.ledger_hash ?? null, row: r,
+      label: r.label, kind: r.kind, ok: r.ok, result: r.result,
     };
   }
 
@@ -64,7 +64,7 @@
     return [...fresh, ...old.filter((e) => e.height != null && e.height <= lowest && !known.has(e.txid))];
   }
 
-  /** The text of an amount in the list: the change of XRP, or what the transaction was when the balance did not move. */
+  /** The text of an amount in the list: the change of XRP, or what the transaction was when the balance did not move (an account only named, which paid no fee). */
   const amountText = (e) => (e.net !== 0n ? X.format.xrpSigned(e.net) : e.label);
 
   X.wallet = { netOf, entry, entries, reach, merge, amountText };

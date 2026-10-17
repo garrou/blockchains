@@ -29,7 +29,7 @@
     EnableAmendment: 'Amendment (network)', SetFee: 'Fee setting (network)', UNLModify: 'Validator list (network)',
   };
 
-  /** The kind of a transaction: its type, unless it failed (a "tec" result still pays the fee, but changed nothing). */
+  /** The kind of a transaction: its type, unless it failed (a "tec" result still pays the fee, but does not do what it was sent for). */
   function kindOf(type, result) {
     if (typeof result === 'string' && result.startsWith('tec')) return 'failed';
     if (KIND_OF[type]) return KIND_OF[type];
@@ -50,8 +50,12 @@
     return { tx: entry, meta: entry.meta ?? entry.metaData, extra: entry };
   }
 
-  /** The amount a payment really moved: the metadata's delivered amount, else the amount asked for. */
-  const movedOf = (tx, meta) => meta?.delivered_amount ?? meta?.DeliveredAmount ?? tx.DeliverMax ?? tx.Amount ?? null;
+  /** The amount a payment really moved: the metadata's delivered amount, else the amount asked for (for a payment that did not fail). */
+  const movedOf = (tx, meta) => {
+    const delivered = meta?.delivered_amount ?? meta?.DeliveredAmount;
+    if (delivered != null && delivered !== 'unavailable') return delivered; // "unavailable": a partial payment of before 2014-01, which the server cannot tell
+    return tx.DeliverMax ?? tx.Amount ?? null;
+  };
 
   /**
    * A transaction of a ledger (or of an account's history), as a row. Returns null for something that is not a transaction we can
@@ -73,7 +77,7 @@
       result, ok: result == null ? null : result === 'tesSUCCESS',
       nodes: Array.isArray(meta?.AffectedNodes) ? meta.AffectedNodes.length : 0,
       index: meta?.TransactionIndex ?? null,
-      moved: type === 'Payment' ? movedOf(tx, meta) : null,
+      moved: type === 'Payment' && kind !== 'failed' ? movedOf(tx, meta) : null, // a payment that failed moved nothing, whatever it asked for
       tx, meta,
     };
   }

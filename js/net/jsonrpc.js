@@ -53,7 +53,12 @@
     async function batch(calls) {
       if (!calls.length) return [];
       const ids = calls.map(() => nextId++);
-      const one = () => Promise.all(calls.map(([method, params]) => call(method, params).catch((e) => e)));
+      const RATE_LIMIT = /rate|limit|too many|quota|busy|capacity|throttl/i; // a refusal because of the load: asking again, N times over, makes it worse
+      const one = async () => { // the calls one by one, a few at a time
+        const out = [];
+        for (let i = 0; i < calls.length; i += 6) out.push(...await Promise.all(calls.slice(i, i + 6).map(([method, params]) => call(method, params).catch((e) => e))));
+        return out;
+      };
       let json;
       try {
         json = await post(calls.map(([method, params], i) => ({ jsonrpc: '2.0', id: ids[i], method, params: params ?? [] })));
@@ -61,7 +66,10 @@
         if (calls.length > 1 && REFUSES_BATCHES.has(e.status)) return one(); // refused as a whole, with an HTTP error
         throw e;
       }
-      if (!Array.isArray(json)) return one(); // refused as a whole, with a JSON-RPC error
+      if (!Array.isArray(json)) { // refused as a whole, with a JSON-RPC error
+        if (json.error && RATE_LIMIT.test(String(json.error.message))) throw fail(json.error);
+        return one();
+      }
       const byId = new Map(json.map((r) => [r.id, r]));
       return ids.map((id) => {
         const r = byId.get(id);
@@ -106,7 +114,12 @@
       timer = setTimeout(open, Math.min(30000, 1000 * 2 ** retry++));
     }
     const ctl = {
-      send(obj) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); },
+      /** Sends a message; false when it could not be (the socket is not open): the caller keeps it for the next connection. */
+      send(obj) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+        ws.send(JSON.stringify(obj));
+        return true;
+      },
       ready() { retry = 0; },
       close() { if (ws) ws.close(); },
     };

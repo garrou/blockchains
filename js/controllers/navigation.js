@@ -69,10 +69,13 @@
       if (request !== liveRequest || !state.detached) return; // cancelled by a newer navigation
       state.detached = false;
       state.tip = Math.max(state.tip, Explorer.blocks.tipOf(list));
-      state.blocks = Explorer.blocks.merge([], list);
+      // the blocks that came by WebSocket while the list was loading are newer than it: they go on top of it
+      const newer = state.liveBlocks.filter((b) => b.height > Explorer.blocks.tipOf(list));
+      state.blocks = Explorer.blocks.merge(Explorer.blocks.merge([], list), newer).slice(0, MAX_BLOCKS);
       renderRow();
       sync().sync();
-      if (state.tip > Explorer.blocks.tipOf(state.blocks)) loadBlocks(); // a block was mined while the list was loading
+      const hole = newer.length && newer.at(-1).height > Explorer.blocks.tipOf(list) + 1;
+      if (hole || state.tip > Explorer.blocks.tipOf(state.blocks)) loadBlocks(); // a block was mined while the list was loading, or one was missed
     }
     sync().publishNow();
     const target = thenFocus ?? state.blocks[0]?.id;
@@ -94,16 +97,29 @@
     if (state.focusId !== S.nextId && !state.blocks.some((x) => x.id === state.focusId)) focus(state.blocks[0].id, true);
   }
 
+  const MAX_BLOCKS = 500; // blocks held, newest first: the oldest fall off (a page of "older" blocks is about 15)
+
+  /**
+   * The latest blocks merged into `old`, unless there is a gap between them (the page was away for longer than a page of blocks: a
+   * sleeping tab, a lost connection): then `list` replaces `old`, because a list with a hole is worse than a short one.
+   */
+  function joinLatest(old, list) {
+    const gap = old.length && list.length && Explorer.blocks.tipOf(old) < list.at(-1).height - 1;
+    return Explorer.blocks.merge(gap ? [] : old, list);
+  }
+
   /** A new block was mined (WebSocket). */
   function addBlock(b) {
     state.tip = Math.max(state.tip, b.height);
     if (!state.detached && state.blocks.some((x) => x.id === b.id)) return;
     sync().resetProjection(); // the next block is recomputed, whatever we are looking at
     if (state.detached) { // browsing a searched block: the live list is reloaded when coming back; meanwhile it is only kept for the statistics
-      state.liveBlocks = Explorer.blocks.merge(state.liveBlocks, [b]);
+      state.liveBlocks = Explorer.blocks.merge(state.liveBlocks, [b]).slice(0, MAX_BLOCKS);
+      const below = state.liveBlocks.find((x) => x.height === b.height - 1);
+      if (state.liveBlocks.length > 1 && !below) loadBlocks(); // a missed block: the live list is mended (see refreshBlocks)
       return;
     }
-    state.blocks = Explorer.blocks.merge(state.blocks, [b]);
+    state.blocks = Explorer.blocks.merge(state.blocks, [b]).slice(0, MAX_BLOCKS);
     renderRow(b.id);
     // the new block must sit on the block we have just below it; if not (a missed block, a deeper reorganization),
     // load the latest blocks again
@@ -118,8 +134,8 @@
   async function refreshBlocks() {
     const list = await Explorer.chain.data.latestBlocks();
     state.tip = Math.max(state.tip, Explorer.blocks.tipOf(list));
-    if (state.detached) { state.liveBlocks = Explorer.blocks.merge(state.liveBlocks, list); return; } // the live list is rebuilt when coming back
-    const merged = Explorer.blocks.merge(state.blocks, list);
+    if (state.detached) { state.liveBlocks = joinLatest(state.liveBlocks, list); return; } // the live list is rebuilt when coming back
+    const merged = joinLatest(state.blocks, list);
     if (Explorer.blocks.sameList(merged, state.blocks)) return; // nothing new
     const first = !state.blocks.length;
     state.blocks = merged;

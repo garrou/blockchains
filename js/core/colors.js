@@ -1,4 +1,4 @@
-// Fee-rate -> color / tower height. Pure math, no Three.js: colors are plain [r, g, b] arrays (0..1, may exceed 1:
+// Rate -> color / tower height (and a chain's own color for a tower: fromHex). Pure math, no Three.js: colors are plain [r, g, b] arrays (0..1, may exceed 1:
 // values above 1 make the bloom pass "glow"). The scale itself (lowest and highest rate, color stops) is the chain's:
 // Explorer.chain.rates, so Explorer.defineChain() must have run before this file.
 (() => {

@@ -12,6 +12,6 @@
     follow: true,      // keep the camera on the latest block
     focusId: null,     // slot the camera is on ('next' or a block id)
     selectedId: null,  // block selected for the "details" button
-    wallet: null,      // the address a chain tracks, if it can (Bitcoin): { address, txs: its transactions, confirmedTotal, busy, failed }
+    wallet: null,      // the address a chain tracks, if it can (Bitcoin, XRP): { address, txs: its transactions, busy, failed, ... }; the chain's own fields
   };
 })();

@@ -6,16 +6,17 @@
   const X = (Explorer.xrp = Explorer.xrp || {});
   const F = Explorer.format;
 
+  const WINDOW = 15;       // ledgers the rate is measured on
   let fee = null;
   let dayAt = 0, dayRunning = false;
   const bootedAt = Date.now();
 
   /** Redraws what comes from the ledgers the page holds (cheap, no request). */
   function refreshLocal() {
-    const blocks = Explorer.nav.liveBlocks();
+    const blocks = Explorer.nav.liveBlocks().slice(0, WINDOW); // the latest ledgers: the rate is a recent one, not an average of the whole session
     const last = blocks[0];
     const head = X.live.headIndex() || last?.height;
-    if (head) Explorer.ui.statsBar.renderLedger({ value: F.number(head), sub: last ? `closed ${last.closedIn != null ? `after ${last.closedIn} s · ` : ''}${F.number(last.tx_count)} tx` : ' ' });
+    if (head) Explorer.ui.statsBar.renderLedger({ value: F.number(head), sub: last ? `closed ${last.closedIn != null ? `after ${last.closedIn} s · ` : ''}${F.number(last.tx_count)} tx${last.height < head ? ` · shown up to #${F.number(last.height)}` : ''}` : ' ' });
     if (blocks.length > 1) {
       const span = blocks[0].timestamp - blocks.at(-1).timestamp;
       const txs = blocks.slice(0, -1).reduce((s, b) => s + b.tx_count, 0); // the oldest one only marks the start of the span
@@ -35,9 +36,11 @@
 
   /** Asks the server: what a transaction costs now, and how full the queue is. */
   async function refresh() {
+    if (document.hidden) return; // nobody looks at a hidden tab
     try {
-      const r = await X.ws.call('fee');
+      const r = await X.ws.call('fee', {}, { priority: 2 }); // not what a person waits for: after the page's own reads
       const d = r.drops ?? {}, open = Number(d.open_ledger_fee), base = Number(d.base_fee);
+      if (!Number.isFinite(open) || !Number.isFinite(base)) throw new Error('no fee in the answer');
       fee = {
         value: F.number(open),
         sub: `reference ${F.number(base)} drops · queue ${F.number(r.current_queue_size ?? 0)} of ${F.number(r.max_queue_size ?? 0)}`,
@@ -62,7 +65,8 @@
     if (blocks.length < 2) return;
     dayRunning = true;
     try {
-      const closeSeconds = (blocks[0].timestamp - blocks.at(-1).timestamp) / (blocks.length - 1);
+      const recent = blocks.slice(0, 2 * WINDOW);
+      const closeSeconds = (recent[0].timestamp - recent.at(-1).timestamp) / (recent.length - 1); // the pace of the latest ledgers
       if (!(closeSeconds > 0)) throw new Error('no close time');
       const perDay = Math.round(86400 / closeSeconds), top = blocks[0].height;
       const indexes = Array.from({ length: cfg.daySamples }, (_, i) => top - Math.round((i * perDay) / cfg.daySamples));

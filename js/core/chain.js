@@ -9,10 +9,12 @@
 //
 // The block model the engine reads (whatever the chain): { id, height, previousblockhash, timestamp }; any other field
 // of a block is only read by the chain's own functions below (cards, lines, fill...).
-// The tower model the engine draws (whatever the chain): { txid, vsize, rate, coinbase?, approx? }
+// The tower model the engine draws (whatever the chain): { txid, vsize, rate, color?, coinbase?, approx? }
 //   vsize: size in "capacity units" (virtual bytes for Bitcoin, gas for Ethereum...); the name is historical
 //   rate:  price per unit of size (sat/vB for Bitcoin, gwei per gas...); it gives the tower its color and height. It need not be
 //          a price per unit: Solana uses the priority fee the transaction paid, whatever its size
+//   color: 0xRRGGBB, a color the chain chose for this tower (its kind of transaction, see `legend` below) instead of the one of its rate;
+//          the rate still gives its height. Towers that fall toward the next block use it too
 //   coinbase: the block reward transaction (drawn gold, in the corner), approx: size unknown (provisional data)
 (() => {
   'use strict';
@@ -43,7 +45,7 @@
     ['data.heightOf', 'function', '(hash) => Promise<number>: the height of a block'],
     ['data.hashOf', 'function', '(height) => Promise<string>: the id of the block at that height'],
     ['data.blockTowers', 'function', '(block) => Promise<tower[]>: its transactions as towers; an array flagged `approx = true` when sizes are not known yet (the engine asks again later)'],
-    ['data.recentTxs', 'function', '() => Promise<pendingTx[]>: transactions that just entered the mempool, newest first. pendingTx: { txid, fee?, vsize?, value? }'],
+    ['data.recentTxs', 'function', '() => Promise<pendingTx[]>: transactions that just entered the mempool, newest first. pendingTx: { txid, rate?, fee?, vsize?, value? } (rate, or else fee / vsize, is its price per unit)'],
     // live: what the chain pushes (the engine passes the handlers, the chain calls them)
     ['live.connect', 'function', '(handlers) => void. handlers: onStatus(bool) connected or not, onOpen() (re)connected, onBlock(block) a block was mined, onUpcoming(list) the pending blocks (opaque to the engine, given back to nextCard / nextLine), onProjected(raw) news about the contents of the next block (given back to createPending().apply), onTransactions(pendingTx[]) and onTxids(pendingTx[]) transactions that entered the mempool'],
     ['live.trackNext', 'function', '() => void: asks the server again for the contents of the next block (needed after every mined block)'],
@@ -109,6 +111,11 @@
     if (typeof min === 'number' && typeof max === 'number' && !(min > 0 && max > min)) problems.push('  - rates: 0 < min < max (the scales are logarithmic)');
     const size = spec.capacity && spec.capacity.size;
     if (typeof size === 'number' && !(size > 0 && Number.isFinite(size))) problems.push('  - capacity.size: a positive number');
+    const legend = spec.legend;
+    if (legend !== undefined && !(legend && Array.isArray(legend.items) && legend.items.length
+      && legend.items.every((it) => it && typeof it.label === 'string' && typeof it.color === 'number') && (legend.note === undefined || typeof legend.note === 'string'))) {
+      problems.push('  - legend: { items: [{ label: string, color: 0xRRGGBB }, ...] (at least one), note?: string }');
+    }
     const stops = spec.rates && spec.rates.stops;
     if (Array.isArray(stops)) {
       const wellFormed = stops.every((s) => Array.isArray(s) && typeof s[0] === 'number' && typeof s[1] === 'number');
@@ -123,7 +130,8 @@
   Explorer.defineChain = (spec) => {
     validate(spec);
     const given = Object.fromEntries(Object.entries(spec).filter(([, v]) => v !== undefined)); // an explicit `undefined` keeps the default
-    Explorer.chain = { ...DEFAULTS, ...given, theme: { ...DEFAULTS.theme, ...given.theme } };
+    const theme = Object.fromEntries(Object.entries(given.theme ?? {}).filter(([, v]) => v !== undefined)); // the same rule inside `theme`
+    Explorer.chain = { ...DEFAULTS, ...given, theme: { ...DEFAULTS.theme, ...theme } };
     return Explorer.chain;
   };
 })();

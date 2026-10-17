@@ -86,7 +86,7 @@ Provisional data: if a mined block's towers are not known precisely yet (`approx
 |---|---|---|---|---|
 | tower (a transaction) | footprint = size (vB), height & color = fee rate (sat/vB) | footprint = gas used, height & color = gas price (gwei) | footprint = compute units (**estimated**), height & color = priority fee paid (lamports) | footprint = ledger objects touched, **color = kind of transaction**, height = fee above the reference fee |
 | full block | 1 Mvb | the gas limit (60M) | compute units (60M) | none: a scale tuned to ordinary ledgers (2,000 objects) |
-| a block | every ~10 min | every 12 s | every 0.4 s: the page shows **one in 10** (a block every 4 s), see `core/blocks.js` | a ledger every 3 to 5 s, final once validated (no forks): every one is shown |
+| a block | every ~10 min | every 12 s | every 0.4 s: the page shows **one in 10** (a block every 4 s), see `core/blocks.js` | a ledger every 3 to 5 s, final once validated (no forks): every one is shown; after a long absence (a sleeping tab) the list starts again from the latest ones |
 | next block | the mempool's projection, pushed by the server | a guess built from the pending transactions the page has seen (best tip first) | none: no mempool can be read (`nextBlock: false`) | none (`nextBlock: false`) |
 | data | mempool.space REST + WebSocket | a node: JSON-RPC + WebSocket (`eth_subscribe`) | a node: JSON-RPC + WebSocket (`slotSubscribe`) | a server: **one WebSocket** for the commands and the ledgers that close (`subscribe` to `ledger`) |
 | accent | orange | Ethereum blue | Solana purple (the scale ends in the logo's green) | XRP blue |
@@ -121,7 +121,7 @@ the version to use); `data/rpc.js` takes that number and asks again, so a new ve
 
 What is XRP-specific: a transaction has no size and no price to bid with (the fee is 10 drops for nearly everybody, and burned), so
 the colors of the towers say **what a transaction is** (a payment, an order of the built-in exchange, a trust line, an AMM pool, an
-NFT, anything else; red when it was charged its fee but did nothing, a result `tec...`). The chain gives each tower its own `color`
+NFT, anything else; red when it was charged its fee but did not do what it was sent for, a result `tec...`). The chain gives each tower its own `color`
 and a `legend` of kinds (see `legend` in `js/core/chain.js`). The footprint is the number of ledger objects the transaction touched
 (the `AffectedNodes` of its metadata); the height is the fee in multiples of the reference fee, flat for almost all and a spike for
 the rare one that paid more. The page needs no HTTP request: the commands (`ledger`, `tx`, `account_info`, `account_tx`, `fee`) travel
@@ -129,7 +129,7 @@ over the same WebSocket as the ledgers that close (`data/ws.js`), which also avo
 The tracked account (`controllers/wallet.js`, `core/wallet.js`) works like the Bitcoin one: the panel over the scene lists the account's
 transactions (a click goes to their ledger), their towers glow and a beacon rises from each, the others are dimmed. It reads
 `account_tx` (newest first, a `marker` leads to the next page: "Load older") and reloads every 10 s. The change of XRP balance of each
-line comes from the metadata (the account's `AccountRoot`); a transaction that did not move XRP (an order, an issued currency) shows
+line comes from the metadata (the account's `AccountRoot`); a transaction that did not change the XRP of the account (it was only named: it paid no fee) shows
 its kind instead. The public servers do not all keep the whole history: the list goes back as far as the server's.
 
 The public servers give each client a budget (about 2,000 units per 10 seconds) and answer `tooBusy` beyond it. `data/ws.js` therefore
@@ -137,7 +137,8 @@ keeps at most 4 commands out at once, serves a person's request before the backg
 server says `retry in ~6379ms` it stops sending for that long and asks again (up to 4 times, then the dialog says why). Commands have a
 priority (0 a person is waiting, 1 the page loading what it draws, 2 background): a click on a tower is not queued behind ledger reads,
 and while the server asks to wait the dialog says so.
-The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
+A command that was on its way when the connection dropped is asked again on the next one (they are all reads), and the start-up shares
+one read of the latest ledgers instead of making two. The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
 
 Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit, and their operators see
 the IP address of the visitor and the addresses and transactions he looks up. Use your own node by changing those lists.

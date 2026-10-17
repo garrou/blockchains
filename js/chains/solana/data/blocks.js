@@ -76,6 +76,7 @@
   const cache = new Map(); // block id -> Promise<{ block, rows }>, most recently used last
   const KEEP = 12;
   let latest = null;       // { height, rows } of the newest block whose transactions were read: the feed's source
+  let lastFailure = 0;     // when the last read for the feed failed (no 3D)
 
   async function load(b) {
     const raw = await S.rpc.block(b.slot, 'accounts');
@@ -126,9 +127,10 @@
     latestRows: () => (latest ? latest.rows : null),
     // No mempool to read: the feed shows the transactions of the newest block read, non-votes first (see chain.js)
     recentTxs: async () => {
-      if (!latest && !Explorer.sceneSync.active()) { // without 3D nothing else reads a block in detail: do it for the newest one
-        const newest = Explorer.nav.liveBlocks()[0];
-        if (newest) await rowsOf(newest).catch(() => null);
+      const newest = Explorer.nav.liveBlocks()[0];
+      // without 3D nothing else reads a block in detail: read the newest one, each time there is a newer one (and not again at once after a failure)
+      if (newest && !Explorer.sceneSync.active() && (!latest || newest.height > latest.height) && Date.now() - lastFailure > 10000) {
+        await rowsOf(newest).catch(() => { lastFailure = Date.now(); });
       }
       return latest ? latest.rows.filter((r) => r.kind !== 'vote').slice(0, cfg().feedPerBlock).map(S.txs.feedItem) : [];
     },

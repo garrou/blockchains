@@ -33,7 +33,8 @@
           decimals: dec != null && Number.isInteger(dec) && dec <= 77 ? dec : null, // a hostile contract may answer anything
         };
         // a call that failed (rate limit, timeout) is not remembered as "not a token": only real answers (even reverts) are
-        const failed = answers.length < 3 || answers.some((r) => r instanceof Error && !r.rpc);
+        const overloaded = (r) => r instanceof Error && (!r.rpc || /rate|limit|too many|quota|busy|capacity|throttl/i.test(r.message)); // a refusal because of the load says nothing about the contract
+        const failed = answers.length < 3 || answers.some(overloaded);
         if (failed) tokenCache.delete(a); else tokenCache.set(a, info);
         results.set(a, info);
       });

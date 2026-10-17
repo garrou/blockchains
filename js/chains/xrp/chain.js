@@ -20,7 +20,7 @@
   const XF = () => X.format;
 
   // The kinds of transaction, with the color of each: here because the legend below needs them while this file loads (core/txs.js
-  // uses them to color the towers). `failed` is not a type: a transaction charged its fee that did nothing (result "tec...").
+  // uses them to color the towers). `failed` is not a type: a transaction charged its fee that did not do what it was sent for (result "tec...").
   const KINDS = X.kinds = {
     payment: { label: 'Payment', color: 0x00aae4 },
     dex: { label: 'Exchange order', color: 0xf7b955 },

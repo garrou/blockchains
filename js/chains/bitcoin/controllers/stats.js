@@ -20,15 +20,24 @@
     refreshDay();
   }
 
-  /** Counts the transactions of the last 24 hours: the blocks the page holds, and as many older pages as it takes to reach back a day. */
+  /**
+   * Counts the transactions of the last 24 hours (before the newest block: the clock of the blocks, not the one of this computer): the
+   * blocks the page holds, and as many older pages as it takes to reach back a day. Tried again in a few seconds while there are no blocks
+   * yet, and in two minutes after a failure or a count that does not reach back a day.
+   */
+  let dayRetry = 0;
   async function refreshDay() {
     const cfg = Explorer.chain.config.stats;
     if (dayRunning || document.hidden || Date.now() - dayAt < cfg.dayRefreshMs) return;
     const held = Explorer.nav.liveBlocks();
-    if (!held.length) return;
+    if (!held.length) { // the page is still loading its blocks
+      if (!dayRetry) dayRetry = setTimeout(() => { dayRetry = 0; refreshDay(); }, 3000);
+      return;
+    }
     dayRunning = true;
+    const later = () => { dayAt = Date.now() - cfg.dayRefreshMs + 120000; };
     try {
-      const now = Math.floor(Date.now() / 1000), blocks = held.slice();
+      const now = held[0].timestamp, blocks = held.slice();
       for (let pages = 0; blocks.at(-1).timestamp > now - 86400 && blocks.at(-1).height > 0 && pages < cfg.dayPagesMax; pages++) {
         const older = await Explorer.bitcoin.api.blocksFrom(blocks.at(-1).height - 1);
         if (!Array.isArray(older) || !older.length) break;
@@ -37,10 +46,10 @@
       const day = Explorer.bitcoin.stats.txPerDay(blocks, now);
       Explorer.ui.statsBar.renderDay({
         value: Explorer.format.number(day.count),
-        sub: `last 24 h · ${Explorer.format.number(day.blocks)} blocks${day.complete ? '' : ' (not a whole day yet)'}`,
+        sub: `24 h before the latest block · ${Explorer.format.number(day.blocks)} blocks${day.complete ? '' : ' (not a whole day yet)'}`,
       });
-      if (day.complete) dayAt = Date.now(); // an incomplete count is tried again at the next refresh
-    } catch (e) { console.warn('transactions per day', e); } finally { dayRunning = false; }
+      if (day.complete) dayAt = Date.now(); else later();
+    } catch (e) { console.warn('transactions per day', e); later(); } finally { dayRunning = false; }
   }
 
   /** Refreshes unless it was done very recently. */

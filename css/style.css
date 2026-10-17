@@ -871,7 +871,7 @@ dialog::backdrop {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
   gap: .75rem;
 }
 
@@ -960,6 +960,10 @@ dialog::backdrop {
 @media (max-width: 860px) {
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats > .stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1; /* an odd number of cards: the last one takes the whole row, not half of it */
   }
 }
 
@@ -1244,6 +1248,7 @@ button:focus-visible:hover {
 
 .chains {
   display: flex;
+  flex-wrap: wrap; /* four chains do not fit on one line of a phone */
   gap: .3rem;
 }
 

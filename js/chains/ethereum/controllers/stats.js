@@ -95,7 +95,10 @@
         sub: `estimated from ${F.number(ok.length)} of the last ${F.number(blocks)} blocks · ${F.fixed(seconds / 3600, 1)} h`,
       });
       dayAt = Date.now();
-    } catch (e) { console.warn('transactions per day', e); } finally { dayRunning = false; }
+    } catch (e) {
+      console.warn('transactions per day', e);
+      dayAt = Date.now() - cfg.dayMs + 60000; // tried again in a minute, not at the next refresh (every 2 s)
+    } finally { dayRunning = false; }
   }
 
   function start() {

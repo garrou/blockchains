@@ -10,21 +10,11 @@
     try {
       const q = X.search.classify(query);
       if (q.type === 'ledger') return await Explorer.nav.goToBlock({ height: q.index }, token);
-      if (q.type === 'hash') {
-        // a transaction hash and a ledger hash look the same: ask for the transaction first
-        try { await X.ws.call('tx', { transaction: q.hash, binary: false }); } catch (e) {
-          if (e.status !== 404) throw e;
-          if (!Explorer.requests.isCurrent(token)) return;
-          try { return await Explorer.nav.goToBlock({ hash: q.hash }, token); }
-          catch (e2) { throw e2.status === 404 ? new Error('no transaction or ledger with this hash') : e2; }
-        }
-        if (!Explorer.requests.isCurrent(token)) return;
-        return await X.details.openTx(q.hash);
-      }
+      if (q.type === 'hash') return await X.details.openHash(q.hash); // a transaction, or else a ledger
       if (q.type === 'account') return await X.details.openAddress(q.address);
       Explorer.ui.detail.message('Not recognized: enter a ledger index, a transaction or ledger hash (64 hex digits) or an address (starts with r).');
     } catch (e) {
-      if (Explorer.requests.isCurrent(token)) Explorer.ui.detail.message(`Not found (${e.message})`);
+      if (Explorer.requests.isCurrent(token)) Explorer.ui.detail.message(e.status === 404 || !e.rpc && !/timeout|busy|connection/.test(e.message) ? `Not found (${e.message})` : `Could not complete the search (${e.message})`);
     }
   }
 

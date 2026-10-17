@@ -299,7 +299,7 @@
     function streamInto(slot, items) {
       for (const it of items) {
         if (slot.stream.length >= MAX_STREAM) break;
-        const color = it.rate != null ? colorOf(Explorer.colors.rate(it.rate)) : new THREE.Color(Explorer.colors.NEXT_BLOCK_HEX);
+        const color = it.color != null ? colorOf(Explorer.colors.fromHex(it.color)) : it.rate != null ? colorOf(Explorer.colors.rate(it.rate)) : new THREE.Color(Explorer.colors.NEXT_BLOCK_HEX);
         const side = 0.7 + Math.random() * 0.6;
         const t = it.rate != null && it.vsize > 1 ? Explorer.layout.nominalTower(it.vsize, it.rate) : { w: side, h: side, height: side };
         const mesh = fallingTower(color, t.w, t.height, t.h);

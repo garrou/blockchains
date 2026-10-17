@@ -50,7 +50,7 @@
 
   /** Starts the waiting downloads while slots are free: the block nearest to the camera first; one no longer near is dropped. */
   function pump() {
-    while (running < S.loads && queue.length) {
+    while (!document.hidden && running < S.loads && queue.length) { // nobody sees a hidden tab: no downloads until it is shown again
       let best = 0;
       queue.forEach((q, i) => { if (distance(q.b) < distance(queue[best].b)) best = i; });
       const { b, resolve, reject } = queue.splice(best, 1)[0];
@@ -207,6 +207,8 @@
     if (scene) scene.setTxs(S.nextId, null);
     Explorer.chain.live.trackNext?.();
   }
+
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pump(); }); // the downloads that waited for the tab to be shown
 
   Explorer.sceneSync = {
     init(sceneInstance) { scene = sceneInstance; },
