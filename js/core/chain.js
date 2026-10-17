@@ -67,6 +67,9 @@
   //   nextBlock                    false: the chain has no pending block to show (no mempool to read): the scene has no "next"
   //                                slot, and live.onProjected / onUpcoming are never called: nextCard, nextLine, live.trackNext
   //                                and createPending can be left out
+  //   legend                       { items: [{ label, color: 0xRRGGBB }], note }: the colors of the towers are kinds, not rates
+  //                                (a chain with no price to color by). The tower then carries its own `color`; its
+  //                                `rate` still gives its height. The legend shows a swatch for each kind instead of the gradient
   //   blockNumber(block)           how the number of a block reads ("21,500,000"). Default: its height, with thousands separators.
   //                                A chain whose engine height is not the number people know (Solana: a block is a slot) says it here
   const DEFAULTS = {
@@ -86,7 +89,7 @@
   // The optional parts have a type too, when a chain gives them: [path, expected typeof]
   const OPTIONAL = [['theme.accent', 'number'], ['nextBlock', 'boolean'], ['blockNumber', 'function'], ['openTx', 'function'], ['openBlock', 'function'],
     ['search', 'function'], ['onBlock', 'function'], ['onVisible', 'function'], ['onHighlight', 'function'], ['start', 'function'],
-    ['rates.label', 'function'], ['rates.heightScale', 'string']];
+    ['rates.label', 'function'], ['rates.heightScale', 'string'], ['legend', 'object']];
 
   const get = (obj, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 

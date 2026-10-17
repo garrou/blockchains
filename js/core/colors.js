@@ -36,6 +36,7 @@
 
   Explorer.colors = {
     rate,
+    fromHex: (hex) => rgb(hex).map((c) => c * 1.1), // a color the chain chose for a tower (see `color` in core/chain.js), as bright as the scale's
     towerHeight,
     position,
     MIN_RATE,

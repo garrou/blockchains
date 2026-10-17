@@ -79,7 +79,7 @@
   function finish(list, rects) {
     const heights = list.map((x) => (x.coinbase ? S.frameH - 1 : Explorer.colors.towerHeight(x.rate)));
     const colors = new Float32Array(list.length * 3);
-    list.forEach((x, k) => colors.set(x.coinbase ? Explorer.colors.COINBASE : Explorer.colors.rate(x.rate), k * 3));
+    list.forEach((x, k) => colors.set(x.coinbase ? Explorer.colors.COINBASE : x.color != null ? Explorer.colors.fromHex(x.color) : Explorer.colors.rate(x.rate), k * 3));
     return { list, rects, heights, colors };
   }
 

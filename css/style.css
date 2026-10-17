@@ -556,6 +556,30 @@ dd {
   transform: none;
 }
 
+.legend-scale.categories {
+  /* a chain whose colors are kinds of transactions: swatches and words instead of a gradient */
+  width: auto;
+  max-width: 520px;
+  padding-bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  line-height: 1;
+}
+
+.legend-scale.categories .kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  position: static;
+}
+
+.legend-scale.categories .kind i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
 .tooltip {
   position: absolute;
   z-index: 2;
@@ -1305,7 +1329,7 @@ body.home h1 {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
   gap: 1rem;
 }
 
@@ -1351,6 +1375,10 @@ body.home h1 {
 
 .card.solana {
   --c: #9945ff;
+}
+
+.card.xrp {
+  --c: #00aae4;
 }
 
 .card img {

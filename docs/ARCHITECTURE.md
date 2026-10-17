@@ -5,7 +5,7 @@ Each page is split in two:
 - the **engine**: everything that draws blocks and transactions in 3D, keeps the list of blocks, the feed and the camera.
   It knows nothing about any blockchain.
 - a **chain**: one object that gives the engine its numbers, its words and its data. Everything specific to a chain lives
-  in `js/chains/<name>/`. Three exist: Bitcoin (`bitcoin.html`), Ethereum (`ethereum.html`), Solana (`solana.html`); `index.html` is the home page that
+  in `js/chains/<name>/`. Four exist: Bitcoin (`bitcoin.html`), Ethereum (`ethereum.html`), Solana (`solana.html`), the XRP Ledger (`xrp.html`); `index.html` is the home page that
   links to them.
 
 The engine talks to the chain only through `Explorer.chain`. The contract is written (and validated at startup) in
@@ -24,15 +24,15 @@ js/
   controllers/   orchestration (navigation, scene-sync, feed, "latest request wins")
   net/           JSON-RPC over HTTP and WebSocket (shared by the chains that speak it: nodes tried in turn, batches, reconnection)
   app.js         entry point: creates the views and the scene, connects the chain, wires everything
-  chains/<name>/ (bitcoin, ethereum, solana: the same four folders, each file is that chain's own)
+  chains/<name>/ (bitcoin, ethereum, solana, xrp: the same four folders, each file is that chain's own)
     chain.js     the spec passed to Explorer.defineChain: numbers, words, data, live, hooks
     core/        pure logic of the chain (transactions, addresses, search classification...), no DOM, no network
     data/        where the data comes from (Bitcoin: mempool.space; Ethereum, Solana: a node, over JSON-RPC)
     ui/          the chain's screens (detail dialog content, statistics bar)
     controllers/ the chain's orchestration (detail requests, search, statistics; Bitcoin: tracked address)
-css/             style.css (shared by every page, home page included), bitcoin.css, ethereum.css, solana.css (what only that chain's page needs)
+css/             style.css (shared by every page, home page included), bitcoin.css, ethereum.css, solana.css, xrp.css (what only that chain's page needs)
 index.html                                   home: the choice of a chain
-bitcoin.html  ethereum.html  solana.html     one page per chain: same engine scripts, the chain's own scripts
+bitcoin.html  ethereum.html  solana.html  xrp.html     one page per chain: same engine scripts, the chain's own scripts
 img/                                         the logos of the chains (title, switch, home page)
 ```
 
@@ -80,18 +80,18 @@ user: click a tower / block, "Block details", search box --> chain.openTx / open
 Provisional data: if a mined block's towers are not known precisely yet (`approx`), the engine draws what it has and asks
 `blockTowers` again later (`scene-sync.js`, retries).
 
-## The three chains
+## The four chains
 
-| | Bitcoin | Ethereum | Solana |
-|---|---|---|---|
-| tower (a transaction) | footprint = size (vB), height & color = fee rate (sat/vB) | footprint = gas used, height & color = gas price (gwei) | footprint = compute units (**estimated**), height & color = priority fee paid (lamports) |
-| full block | 1 Mvb | the gas limit (60M) | compute units (60M) |
-| a block | every ~10 min | every 12 s | every 0.4 s: the page shows **one in 10** (a block every 4 s), see `core/blocks.js` |
-| next block | the mempool's projection, pushed by the server | a guess built from the pending transactions the page has seen (best tip first) | none: no mempool can be read (`nextBlock: false`) |
-| data | mempool.space REST + WebSocket | a node: JSON-RPC + WebSocket (`eth_subscribe`) | a node: JSON-RPC + WebSocket (`slotSubscribe`) |
-| accent | orange | Ethereum blue | Solana purple (the scale ends in the logo's green) |
-| address page | totals + transactions | balance, nonce, contract or wallet, token name, ENS | balance, owner program, token holdings, latest transactions |
-| tracked address in 3D ("Show in 3D") | yes | **no** | **no** |
+| | Bitcoin | Ethereum | Solana | XRP Ledger |
+|---|---|---|---|---|
+| tower (a transaction) | footprint = size (vB), height & color = fee rate (sat/vB) | footprint = gas used, height & color = gas price (gwei) | footprint = compute units (**estimated**), height & color = priority fee paid (lamports) | footprint = ledger objects touched, **color = kind of transaction**, height = fee above the reference fee |
+| full block | 1 Mvb | the gas limit (60M) | compute units (60M) | none: a scale tuned to ordinary ledgers (2,000 objects) |
+| a block | every ~10 min | every 12 s | every 0.4 s: the page shows **one in 10** (a block every 4 s), see `core/blocks.js` | a ledger every 3 to 5 s, final once validated (no forks): every one is shown |
+| next block | the mempool's projection, pushed by the server | a guess built from the pending transactions the page has seen (best tip first) | none: no mempool can be read (`nextBlock: false`) | none (`nextBlock: false`) |
+| data | mempool.space REST + WebSocket | a node: JSON-RPC + WebSocket (`eth_subscribe`) | a node: JSON-RPC + WebSocket (`slotSubscribe`) | a server: **one WebSocket** for the commands and the ledgers that close (`subscribe` to `ledger`) |
+| accent | orange | Ethereum blue | Solana purple (the scale ends in the logo's green) | XRP blue |
+| address page | totals + transactions | balance, nonce, contract or wallet, token name, ENS | balance, owner program, token holdings, latest transactions | balance, objects owned, latest transactions |
+| tracked address in 3D ("Show in 3D") | yes | **no** | **no** | not yet (`account_tx` would allow it) |
 
 Why no tracked address on Ethereum and Solana. On Bitcoin the page lights up the towers of an address: it can, because the
 mempool.space API lists every transaction of an address. A plain Ethereum node cannot (it takes an indexer such as Etherscan,
@@ -110,6 +110,15 @@ touches (`estimateCU` in `core/txs.js`). The real figure is on the page of the t
 A Solana node refuses a block that holds a transaction newer than the version the client says it supports (error -32015, it names
 the version to use); `data/rpc.js` takes that number and asks again, so a new version of the format does not blank the page.
 
+What is XRP-specific: a transaction has no size and no price to bid with (the fee is 10 drops for nearly everybody, and burned), so
+the colors of the towers say **what a transaction is** (a payment, an order of the built-in exchange, a trust line, an AMM pool, an
+NFT, anything else; red when it was charged its fee but did nothing, a result `tec...`). The chain gives each tower its own `color`
+and a `legend` of kinds (see `legend` in `js/core/chain.js`). The footprint is the number of ledger objects the transaction touched
+(the `AffectedNodes` of its metadata); the height is the fee in multiples of the reference fee, flat for almost all and a spike for
+the rare one that paid more. The page needs no HTTP request: the commands (`ledger`, `tx`, `account_info`, `account_tx`, `fee`) travel
+over the same WebSocket as the ledgers that close (`data/ws.js`), which also avoids asking the servers for cross-origin permission.
+The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
+
 Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit, and their operators see
 the IP address of the visitor and the addresses and transactions he looks up. Use your own node by changing those lists.
 
@@ -123,7 +132,7 @@ the IP address of the visitor and the addresses and transactions he looks up. Us
 3. Write its words: `blockCard`, `nextCard`, `blockLine`, `nextLine`, `feedRow`, `describeTower`.
 4. Optionally provide hooks (`openTx`, `openBlock`, `search`, `onBlock`, `onVisible`, `onHighlight`, `start`) for its own
    detail screens, search and statistics. A chain without a hook simply has no such feature.
-5. Optionally state its look and shape: `theme.accent`, `rates.heightScale`, `rates.label`, `blockNumber`, and `nextBlock: false`
+5. Optionally state its look and shape: `theme.accent`, `rates.heightScale`, `rates.label`, `blockNumber`, `legend` (and a `color` on each tower) when colors are kinds rather than prices, and `nextBlock: false`
    if there is no pending block to show (see the list of optional parts in `js/core/chain.js`).
 6. Make a page: copy `ethereum.html` (the simplest) and load the new chain's scripts instead; add the chain to the switch of the
    other pages (a logo in `img/`) and a card to `index.html`. No build step: scripts only.
@@ -144,5 +153,5 @@ Nothing to install or build, and Node is not needed: open `index.html` (or a cha
   in the console and a missing block or screen: see `data/` of the chain.
 - **Historical names.** In the tower model, `vsize` means "size in capacity units" and `rate` "price per unit";
   the names come from Bitcoin (virtual size, sat/vB) and were kept to avoid a risky mass rename.
-- **A chain with no proof-of-work** (Ethereum, Solana...) needs decisions the contract does not make for you: what a "block"
+- **A chain with no proof-of-work** (Ethereum, Solana, the XRP Ledger...) needs decisions the contract does not make for you: what a "block"
   and a "slot" are, what the size of a transaction is (gas?), and what the next block shows. See `core/chain.js`.

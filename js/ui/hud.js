@@ -23,12 +23,23 @@
 
   /** The fee scale legend: gradient and ticks come from the very stops the towers are colored with (the chain's rates). */
   function renderLegend() {
+    const legend = Explorer.chain.legend;
+    if (legend) return renderCategories(legend);
     const C = Explorer.colors, rates = Explorer.chain.rates, label = rates.label ?? String, at = (r) => `${(C.position(r) * 100).toFixed(1)}%`;
     const css = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
     $('#legend-bar').style.background = `linear-gradient(90deg, ${C.stops.map((s) => `${css(s.hex)} ${at(s.rate)}`).join(', ')})`;
     $('#legend-ticks').replaceChildren(...rates.ticks.map((r) =>
       el('span', { style: `left:${at(r)}`, class: r === C.MIN_RATE ? 'first' : '' }, label(r))));
     $('#legend-max').textContent = `${label(C.MAX_RATE)}+ ${rates.unit}`; // the right end of the bar: this rate and above look the same
+  }
+
+  /** A chain whose colors name a kind of tower rather than a rate (chain.legend): a swatch and a word for each kind. */
+  function renderCategories(legend) {
+    const css = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
+    const scale = $('.legend-scale');
+    scale.classList.add('categories');
+    scale.replaceChildren(...legend.items.map((it) => el('span', { class: 'kind' }, el('i', { style: `background:${css(it.color)}` }), it.label)));
+    $('#legend-max').textContent = legend.note ?? '';
   }
 
   Explorer.ui.hud = {
