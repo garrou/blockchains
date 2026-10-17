@@ -38,6 +38,7 @@
     onOrder: (mode) => Explorer.sceneSync.setOrder(mode),
     onPlacement: (mode) => Explorer.sceneSync.setPlacement(mode),
     onColorBy: () => Explorer.sceneSync.recolor(),
+    onKindFilter: (colors) => Explorer.sceneSync.setKindFilter(colors),
     onDetails: () => state.selectedId && chain.openBlock(state.selectedId),
   });
   if (scene) {

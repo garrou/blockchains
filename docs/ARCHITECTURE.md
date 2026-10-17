@@ -163,6 +163,10 @@ the IP address of the visitor and the addresses and transactions he looks up. Us
   `legend`). A chain with a `legend` and no `colorSwitch` is always by kind (XRP). With `colorSwitch: true` (Ethereum, Solana) it starts by price and the
   HUD offers "Color: Price / Kind" (`#colorby`, remembered); the legend and the note under the scene follow, and the scene paints the towers again in place
   (`scene.recolor()`).
+- **The legend as a filter**: when the colors are kinds (a chain with a `legend`, and Ethereum / Solana in "Kind" mode), each swatch is a button: a click keeps
+  the towers of that kind (their `color`) and dims the others, like the dimming of a tracked address; several kinds can be chosen, a second click on a kind
+  puts it back, and leaving the "Kind" mode forgets the choice. The scene does it in `scene.setKindFilter(colors)` (the same factor as the wallet's `dim`: a
+  tower of a tracked address stays lit whatever the filter says); the far light shapes of the blocks are not filtered.
 - **Diagnostics** (`core/diag.js`, `ui/diag.js`): `?debug` (or Shift+D) opens a panel with what the page did with the network: requests per
   node, errors, the state of the connection and of the blocks held, and a "Copy report" button to paste into an issue. The network layers
   call `Explorer.diag?.note/count/gauge` (always optional: nothing depends on it); keys in URLs are masked in the report.

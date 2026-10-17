@@ -572,6 +572,30 @@ dd {
   align-items: center;
   gap: 5px;
   position: static;
+  /* a button: click to show only this kind in the scene (the others are dimmed) */
+  margin: -3px -5px;
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.legend-scale.categories .kind:hover {
+  background: #ffffff12;
+}
+
+.legend-scale.categories .kind.on {
+  color: var(--text);
+  background: #ffffff1f;
+}
+
+.legend-scale.categories .kind.off {
+  opacity: .45;
 }
 
 .legend-scale.categories .kind i {

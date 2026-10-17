@@ -219,6 +219,8 @@
     hasProjection: () => projection.hasData(),
     /** Tracked wallet: { txids, blocks, dim } makes its towers glow (see scene3d.setHighlight); null stops. */
     setHighlight(tracked) { if (scene) scene.setHighlight(tracked); },
+    /** Only the towers of these kinds (a Set of tower colors) keep their color; null: all of them (see scene3d.setKindFilter). */
+    setKindFilter(colors) { if (scene) scene.setKindFilter(colors); },
     /** Txids of the tracked towers that are currently drawn. */
     litTxids: () => (scene ? scene.litTxids() : new Set()),
     /** Transactions displayed by a slot (diagnostics). */

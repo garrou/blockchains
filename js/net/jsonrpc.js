@@ -107,12 +107,12 @@
         old.onopen = old.onmessage = old.onclose = old.onerror = null;
         try { old.close(); } catch { /* already closed */ }
       }
-      lost();
+      lost('connection silent: replaced');
     }
     /** The connection is gone (closed, failed to open, or dropped): tell the chain, try the next node later. */
-    function lost() {
+    function lost(why = 'connection lost') {
       clearTimeout(watchdog);
-      Explorer.diag?.count('ws.lost'); Explorer.diag?.gauge('ws.state', 'down, next try in a moment'); Explorer.diag?.note('ws', 'connection lost');
+      Explorer.diag?.count('ws.lost'); Explorer.diag?.gauge('ws.state', 'down, next try in a moment'); Explorer.diag?.note('ws', why);
       ws = null;
       try { onClose(); } catch (e) { console.warn('socket onClose', e); } // the reconnection must not depend on the chain's handler
       index++; // the next node, in case this one is the problem
@@ -135,16 +135,16 @@
       try {
         const list = urls();
         sock = new WebSocket(list[index % list.length]); // throws on a bad URL, or a ws:// URL on an https page
-      } catch (e) { console.warn('socket', e); lost(); return; }
+      } catch (e) { console.warn('socket', e); lost(`could not open: ${e.message}`); return; }
       ws = sock;
-      sock.onopen = () => { heard(); Explorer.diag?.count('ws.open'); Explorer.diag?.gauge('ws.state', `open: ${sock.url}`); Explorer.diag?.note('ws', `open ${sock.url}`); onOpen(ctl.send, ctl); };
+      sock.onopen = () => { sock.__opened = true; heard(); Explorer.diag?.count('ws.open'); Explorer.diag?.gauge('ws.state', `open: ${sock.url}`); Explorer.diag?.note('ws', `open ${sock.url}`); onOpen(ctl.send, ctl); };
       sock.onmessage = (ev) => {
         heard();
         let msg;
         try { msg = JSON.parse(ev.data); } catch { return; } // ignore malformed frames
         onMessage(msg, ctl);
       };
-      sock.onclose = () => { if (ws === sock) lost(); };
+      sock.onclose = (ev) => { if (ws === sock) lost(`closed by ${sock.url} (code ${ev.code}${ev.reason ? `: ${ev.reason}` : ''}${sock.__opened ? '' : ', never opened'})`); };
       sock.onerror = () => sock.close();
     }
     open();

@@ -13,6 +13,7 @@
 
   let ctl = null, open = false, nextId = 1, handlers = {};
   let inFlight = 0, pausedUntil = 0, pumpTimer = 0;
+  let gap = 0, lastSent = 0; // pace: milliseconds between two commands (0: as fast as the places allow). A refusal sets it, each answer lowers it
   const waiting = new Map(); // id -> { resolve, reject, timer, msg, sent (on the wire), counted (takes one of the places), retries, priority }
   let queue = [];            // commands not sent yet, by priority (0 a person is waiting, 1 the page loading what it draws, 2 background), then in order
   const busyListeners = new Set();
@@ -52,8 +53,11 @@
     const wait = pausedUntil - Date.now();
     if (wait > 0) { pumpTimer = setTimeout(pump, wait); return; }
     while (inFlight < cfg().maxInFlight && queue.length) {
+      const early = lastSent + gap - Date.now();
+      if (gap && early > 0) { pumpTimer = setTimeout(pump, early); return; } // after a refusal the commands go out one by one, not four at once
       const e = queue[0];
       if (!ctl.send(e.msg)) return; // the socket is closing: the command stays in the queue for the next connection
+      lastSent = Date.now();
       Explorer.diag?.count(`xrp.sent.${e.msg.command}`);
       queue.shift();
       clearTimeout(e.queueTimer);
@@ -111,11 +115,11 @@
     open = true;
     inFlight = 0;
     const id = nextId++;
-    const timer = setTimeout(() => { waiting.delete(id); c.close(); }, cfg().rpcTimeoutMs); // a server that does not answer the subscription is replaced
+    const timer = setTimeout(() => { waiting.delete(id); Explorer.diag?.note('ws', 'subscription not answered in time'); c.close(); }, cfg().rpcTimeoutMs); // a server that does not answer the subscription is replaced
     waiting.set(id, {
       timer, sent: true, counted: false, msg: { id },
       resolve: (result) => { c.ready(); handlers.onSubscribed?.(result); },
-      reject: () => c.close(),
+      reject: (err) => { Explorer.diag?.note('ws', `subscription refused: ${err.message}`); c.close(); },
     });
     send({ id, command: 'subscribe', streams: ['ledger'] }); // not counted: it is the one line that must open
     pump(); // what was asked while the socket was down
@@ -128,12 +132,16 @@
         // the server's budget is spent: wait as long as it says, then ask again (nothing is sent in between)
         requeue(e);
         Explorer.diag?.count('xrp.tooBusy'); Explorer.diag?.note('ws', `${e.msg.command} refused: ${msg.error_message ?? msg.error}`);
+        const fresh = pausedUntil <= Date.now(); // the refusals of the commands that were out together count once
         pausedUntil = Math.max(pausedUntil, Date.now() + retryDelay(msg));
+        if (fresh) gap = Math.min(cfg().pace.maxMs, Math.max(cfg().pace.startMs, gap * 2)); // the budget was spent: go slower from now on
+        Explorer.diag?.gauge('xrp.pace', `${gap} ms between commands`);
         busyListeners.forEach((cb) => cb(Math.ceil((pausedUntil - Date.now()) / 1000)));
         pump();
         return;
       }
       release(e);
+      if (gap) { gap = gap * 0.85 < 40 ? 0 : gap * 0.85; Explorer.diag?.gauge('xrp.pace', gap ? `${Math.round(gap)} ms between commands` : 'no limit'); } // an answer: the server keeps up, ease off
       if (msg.status === 'error' || msg.error) e.reject(failure(msg)); else e.resolve(msg.result ?? msg);
       pump();
     } else if (msg.type === 'ledgerClosed') handlers.onLedger?.(msg);
@@ -142,6 +150,7 @@
   function onClose() {
     open = false;
     inFlight = 0;
+    lastSent = 0;
     clearTimeout(pumpTimer);
     for (const e of [...waiting.values()]) { // what was on its way is asked again on the next connection (every command is a read); what was not sent waits
       if (!e.sent) continue;

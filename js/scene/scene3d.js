@@ -178,7 +178,14 @@
     // and a block that holds some of its transactions is outlined in its color. Everything derives from `track`: restyle()
     // applies it to a block when it changes, buildMesh() when a block is built again.
     const beaconMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(MINE).multiplyScalar(1.6), transparent: true, opacity: 0.85, depthWrite: false, fog: false });
-    const shade = (slot, k) => (!track ? 1 : slot.mine.has(k) ? BOOST : track.dim ? DIM : 1); // factor on the color of tower k
+    // The kind filter (setKindFilter): only the towers whose `color` (their kind) is in the set keep their color, the others are dimmed.
+    // It comes with the tracked wallet: a tracked tower stays lit, the others are as dim as the strongest of the two asks.
+    let kindFilter = null;
+    const shade = (slot, k) => { // factor on the color of tower k
+      if (!track && !kindFilter) return 1;
+      if (track && slot.mine.has(k)) return BOOST;
+      return Math.min(track && track.dim ? DIM : 1, !kindFilter || kindFilter.has(slot.list[k].color) ? 1 : DIM);
+    };
 
     function litChanged() { if (track && opts.onHighlight) opts.onHighlight(); }
 
@@ -690,6 +697,11 @@
         track = next && next.txids.size ? { txids: next.txids, blocks: next.blocks ?? new Set(), dim: next.dim !== false } : null;
         for (const s of slots.values()) restyle(s);
         if (opts.onHighlight) opts.onHighlight();
+      },
+      /** Shows only the towers of these kinds (a Set of the `color` the chain gives its towers), the others are dimmed; null = all of them. */
+      setKindFilter(colors) {
+        kindFilter = colors && colors.size ? new Set(colors) : null;
+        for (const s of slots.values()) restyle(s);
       },
       /** Txids of the tracked towers that are currently drawn. */
       litTxids() {

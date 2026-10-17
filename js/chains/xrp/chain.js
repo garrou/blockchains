@@ -41,6 +41,7 @@
       ws: ['wss://xrplcluster.com', 'wss://s1.ripple.com', 'wss://s2.ripple.com'],
       rpcTimeoutMs: 20000,
       maxInFlight: 4,                                 // commands out at once: the public servers give a budget (about 2,000 units per 10 s) and answer "tooBusy" beyond it
+      pace: { startMs: 300, maxMs: 2000 },            // after a refusal the commands go out this far apart (it doubles at each refusal, up to the maximum, and eases off with every answer)
       maxRetries: 4,                                  // times a command refused as too busy is asked again (after the delay the server gives)
       queueTimeoutMs: 60000,                          // a command of the page that could not even be sent after this long is given up
       userQueueTimeoutMs: 30000,                      // ... and one a person is waiting for (a dialog)
