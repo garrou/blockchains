@@ -1,14 +1,14 @@
 // Pure formatting helpers (English locale). No DOM. How a chain writes its amounts and rates: chains/<name>/core/format.js.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
 
   const nf = new Intl.NumberFormat('en-US');
 
   /** Number with a fixed count of decimals, e.g. fixed(1234.5, 1) -> "1,234.5". */
   const fixed = (n, d = 1) => n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 
-  BTC.format = {
+  Explorer.format = {
     number: (n) => nf.format(n),
     fixed,
     /** "abcdefghij…12345678" for long strings (hashes, ids). */

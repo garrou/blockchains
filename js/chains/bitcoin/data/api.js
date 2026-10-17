@@ -1,11 +1,12 @@
 // REST client for mempool.space. Network only: no DOM, no app state.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   /** GET a path of the API. Rejects with an Error carrying `.status` (HTTP status) when the response is not ok. */
   async function get(path) {
-    const res = await fetch(BTC.chain.config.api + path);
+    const res = await fetch(Explorer.chain.config.api + path);
     if (!res.ok) {
       const err = new Error(`${res.status} ${path}`);
       err.status = res.status;
@@ -15,7 +16,7 @@
     return type.includes('json') ? res.json() : res.text();
   }
 
-  BTC.api = {
+  Explorer.bitcoin.api = {
     get,
     /** 15 latest blocks, newest first (with the mining `extras`). */
     blocks: () => get('/v1/blocks'),

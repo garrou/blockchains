@@ -2,7 +2,7 @@
 // app state, nothing about what the calls mean. A chain makes its own client with the nodes it wants.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
 
   /**
    * An HTTP client. urls(): the nodes, tried in turn: when one fails (network error, timeout, HTTP error such as a rate
@@ -105,5 +105,5 @@
     return ctl;
   }
 
-  BTC.jsonrpc = { create, socket };
+  Explorer.jsonrpc = { create, socket };
 })();

@@ -1,15 +1,15 @@
 // The network statistics bar for Solana. View only: the numbers come from controllers/stats.js.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const { $, el } = BTC.dom;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const { $, el } = Explorer.dom;
 
   /** Value with a small unit: "52 %". */
   function setValue(id, text, unit = '') {
     $(`#${id}`).replaceChildren(text, el('em', {}, unit));
   }
 
-  BTC.ui.statsBar = {
+  Explorer.ui.statsBar = {
     /** m: { value, sub } */
     renderSlot(m) { setValue('st-slot', m.value); $('#st-slot-sub').textContent = m.sub; },
     renderTps(m) { setValue('st-tps', m.value, 'tx/s'); $('#st-tps-sub').textContent = m.sub; },

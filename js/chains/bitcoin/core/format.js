@@ -1,13 +1,13 @@
-// Bitcoin's way of writing amounts and fee rates. Pure. It extends the engine's BTC.format (core/format.js).
+// Bitcoin's way of writing amounts and fee rates. Pure. It extends the engine's Explorer.format (core/format.js).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const { fixed } = BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const { fixed } = Explorer.format;
 
   /** Amount in satoshis as "0.5 BTC" (trailing zeros trimmed). */
   const btc = (sats) => (sats / 1e8).toFixed(8).replace(/\.?0+$/, '') + ' BTC';
 
-  Object.assign(BTC.format, {
+  Object.assign(Explorer.format, {
     btc,
     /** Change of a balance, in satoshis, as "+0.5 BTC" / "-0.1 BTC". */
     btcSigned: (sats) => `${sats < 0 ? '-' : '+'}${btc(Math.abs(sats))}`,

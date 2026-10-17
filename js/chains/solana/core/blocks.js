@@ -6,10 +6,10 @@
 // is the slot: blockNumber() in chain.js says it. previousblockhash is the hash of the previous block *shown*.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
 
-  const sample = () => BTC.chain.config.sample;
+  const sample = () => Explorer.chain.config.sample;
   const groupOf = (slot) => Math.floor(slot / sample());   // engine height of the block shown for this slot
   const firstSlotOf = (group) => group * sample();         // the first slot of a group (the block shown is the first one produced from it)
 
@@ -38,7 +38,7 @@
   }
 
   /** How busy a block looks, 0..1: its transactions against a busy block (config.txRef). Only a rough guide: the compute used is read with the details. */
-  const fill = (b) => Math.min(1, b.tx_count / BTC.chain.config.txRef);
+  const fill = (b) => Math.min(1, b.tx_count / Explorer.chain.config.txRef);
 
   S.blocks = { groupOf, firstSlotOf, normalize, link, fill };
 })();

@@ -1,8 +1,8 @@
 // The network statistics bar for Ethereum. View only: the numbers come from controllers/stats.js.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const { $, el } = BTC.dom;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const { $, el } = Explorer.dom;
 
   /** Value with a small unit: "0.31 gwei". */
   function setValue(id, text, unit, cls = '') {
@@ -11,7 +11,7 @@
     node.replaceChildren(text, el('em', {}, unit));
   }
 
-  BTC.ui.statsBar = {
+  Explorer.ui.statsBar = {
     /** m: { value (text), unit, trend: 'up'|'down'|'', sub } */
     renderBase(m) {
       setValue('st-base', m.value, m.unit, m.trend);

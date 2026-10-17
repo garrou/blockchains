@@ -1,8 +1,8 @@
 // Ethereum blocks: the engine's block model plus the Ethereum extras, the base fee rule (EIP-1559), who built the block. Pure.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
   const { big, weiToGwei } = E.format;
 
   const ELASTICITY = 2n;     // a block can hold up to 2x its gas target

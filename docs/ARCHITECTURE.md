@@ -8,16 +8,16 @@ Each page is split in two:
   in `js/chains/<name>/`. Three exist: Bitcoin (`bitcoin.html`), Ethereum (`ethereum.html`), Solana (`solana.html`); `index.html` is the home page that
   links to them.
 
-The engine talks to the chain only through `BTC.chain`. The contract is written (and validated at startup) in
-[`js/core/chain.js`](../js/core/chain.js). `node scripts/check-boundary.js` fails if an engine file names a Bitcoin,
-Ethereum or Solana module or unit.
+The engine talks to the chain only through `Explorer.chain`. The contract is written (and validated at startup) in
+[`js/core/chain.js`](../js/core/chain.js). An engine file must not name a Bitcoin,
+Ethereum or Solana module or unit (`Explorer.bitcoin`, `gwei`, `lamports`...): `grep -rn "Explorer.bitcoin\|gwei\|lamport" js --exclude-dir=chains` should find nothing outside comments.
 
 ## Where things are
 
 ```
 js/
   core/          pure logic, no DOM, no network (treemap layout, colors, block list, feed buffer, formatting)
-    chain.js     THE CONTRACT: what a chain must provide (BTC.defineChain)
+    chain.js     THE CONTRACT: what a chain must provide (Explorer.defineChain)
   state/         the single mutable state of the app
   scene/         the 3D view (Three.js): rendering only
   ui/            DOM views of the engine (block row, HUD, feed, dialog shell)
@@ -25,7 +25,7 @@ js/
   net/           JSON-RPC over HTTP and WebSocket (shared by the chains that speak it: nodes tried in turn, batches, reconnection)
   app.js         entry point: creates the views and the scene, connects the chain, wires everything
   chains/<name>/ (bitcoin, ethereum, solana: the same four folders, each file is that chain's own)
-    chain.js     the spec passed to BTC.defineChain: numbers, words, data, live, hooks
+    chain.js     the spec passed to Explorer.defineChain: numbers, words, data, live, hooks
     core/        pure logic of the chain (transactions, addresses, search classification...), no DOM, no network
     data/        where the data comes from (Bitcoin: mempool.space; Ethereum, Solana: a node, over JSON-RPC)
     ui/          the chain's screens (detail dialog content, statistics bar)
@@ -34,12 +34,13 @@ css/             style.css (shared by every page, home page included), bitcoin.c
 index.html                                   home: the choice of a chain
 bitcoin.html  ethereum.html  solana.html     one page per chain: same engine scripts, the chain's own scripts
 img/                                         the logos of the chains (title, switch, home page)
-tests/           node tests/ethereum.test.js, tests/solana.test.js (pure logic of each chain), tests/jsonrpc.test.js (the shared client)
 ```
 
-All files are classic scripts sharing the global `BTC` (no modules, no build): the page works when double-clicked.
+All files are classic scripts sharing the global `Explorer` (no modules, no build): the page works when double-clicked.
+`Explorer` holds the engine (`Explorer.chain`, `Explorer.ui`, `Explorer.state`...); each chain keeps its own modules under its name
+(`Explorer.bitcoin.api`, `Explorer.ethereum.rpc`, `Explorer.solana.txs`...), so the engine and the chains never share a name.
 The order of the `<script>` tags in each chain's page matters; it follows the layers above, and the chain is loaded
-right after `core/config.js` because some engine files read `BTC.chain` while loading.
+right after `core/config.js` because some engine files read `Explorer.chain` while loading.
 
 ## A short glossary of the 3D view
 
@@ -114,7 +115,7 @@ the IP address of the visitor and the addresses and transactions he looks up. Us
 
 ## Adding a chain
 
-1. Create `js/chains/<name>/chain.js` calling `BTC.defineChain({...})`. The call lists every missing or mistyped field of
+1. Create `js/chains/<name>/chain.js` calling `Explorer.defineChain({...})`. The call lists every missing or mistyped field of
    the contract in one error, so you can start from an empty object and fill it in.
 2. Implement the data side: `data.*` (REST-like requests), `live.connect` (push events, in the shapes the contract describes)
    and `createPending` (the towers of the pending block). Turn the chain's raw formats into the tower model
@@ -126,15 +127,16 @@ the IP address of the visitor and the addresses and transactions he looks up. Us
    if there is no pending block to show (see the list of optional parts in `js/core/chain.js`).
 6. Make a page: copy `ethereum.html` (the simplest) and load the new chain's scripts instead; add the chain to the switch of the
    other pages (a logo in `img/`) and a card to `index.html`. No build step: scripts only.
-   A chain that speaks JSON-RPC can use `BTC.jsonrpc.create` / `BTC.jsonrpc.socket` from `js/net/jsonrpc.js`.
-7. Test it: the pure logic with a node test as in `tests/`; the page against a mocked node (the nodes used above cannot be
-   called from a test: a fake one that answers the same JSON is enough to see every screen).
+   A chain that speaks JSON-RPC can use `Explorer.jsonrpc.create` / `Explorer.jsonrpc.socket` from `js/net/jsonrpc.js`.
+7. Try it: open the page; a fake node that answers the same JSON is enough to see every screen if the real ones are unreachable.
+
+## Running
+
+Nothing to install or build, and Node is not needed: open `index.html` (or a chain's page) in a browser.
 
 ## Known limitations
 
-- **One chain per page.** `BTC.chain` is a single global; two chains in one page are not supported.
-- **Modules are not all namespaced the same way.** Bitcoin registers `BTC.api`, `BTC.txs`, `BTC.wallet`...; Ethereum and Solana
-  keep theirs under `BTC.eth` and `BTC.sol`. Each page loads one chain's files only.
+- **One chain per page.** `Explorer.chain` is a single global; two chains in one page are not supported.
 - **Page chrome belongs to the page.** The titles, the statistics bar and the labels are in each chain's own `.html`.
 - **The chains' live data was written against mocked nodes.** The public nodes cannot be reached from the environment this was
   built in: every screen and every flow was tested against a fake node that answers the standard JSON-RPC, not against the real

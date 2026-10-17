@@ -3,9 +3,9 @@
 // says how an amount reads (format) and how the "more" button is called, the engine draws the rest.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const { $, el } = BTC.dom;
-  const F = BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const { $, el } = Explorer.dom;
+  const F = Explorer.format;
 
   const DIM_KEY = 'walletDim';
 
@@ -32,7 +32,7 @@
     $('#wallet-sum').textContent = parts.join(' · ');
   }
 
-  BTC.ui.tracker = {
+  Explorer.ui.tracker = {
     /**
      * handlers: onJump(entry), onOpenAddress(address), onRefresh(), onClear(), onMore(), onDim(bool), and
      * format(entry) -> text of the amount the transaction moved (e.g. "-0.1 BTC"), colored by the sign of entry.net.
@@ -73,7 +73,7 @@
       $('#wallet-list').replaceChildren(...m.entries.map((e) => line(e, m.lit.has(e.txid), m.notes.get(e.txid))));
       $('#wallet-more').hidden = !m.more;
       $('#wallet-more').textContent = m.moreLabel ?? 'Load older';
-      BTC.ui.tracker.setBusy(m.busy);
+      Explorer.ui.tracker.setBusy(m.busy);
       $('#wallet-dim').checked = m.dim;
       summary(m.lit.size);
     },

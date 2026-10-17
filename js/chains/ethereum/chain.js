@@ -9,22 +9,22 @@
 // There is no address history to show: a plain node does not index addresses (that takes an indexer), so unlike on Bitcoin
 // an address page shows its balance and nature, not its transactions.
 //
-// Loaded before the engine files that read BTC.chain at load time (core/colors.js). What it delegates to is only called
+// Loaded before the engine files that read Explorer.chain at load time (core/colors.js). What it delegates to is only called
 // later, once every script has loaded.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
-  const F = () => BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
+  const F = () => Explorer.format;
   const EF = () => E.format;
 
   const fill = (b) => (b.gasUsed || 0) / (b.gasLimit || 1);
 
-  BTC.defineChain({
+  Explorer.defineChain({
     id: 'ethereum',
     name: 'Ethereum',
 
-    // Constants only the Ethereum files read (BTC.chain.config.*)
+    // Constants only the Ethereum files read (Explorer.chain.config.*)
     config: {
       // public JSON-RPC nodes (HTTP) and their WebSockets, tried in this order; change them to use your own node
       rpc: ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org', 'https://1rpc.io/eth'],
@@ -127,7 +127,7 @@
 
     start() {
       const d = E.details;
-      BTC.ui.detail.init({ onOpenTx: d.openTx, onOpenBlock: d.openBlock, onOpenAddress: d.openAddress });
+      Explorer.ui.detail.init({ onOpenTx: d.openTx, onOpenBlock: d.openBlock, onOpenAddress: d.openAddress });
       E.statsCtl.start();
     },
   });

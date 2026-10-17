@@ -1,4 +1,4 @@
-// The JSON-RPC client of the Solana nodes listed in BTC.chain.config.rpc (the protocol part is js/net/jsonrpc.js), and the two
+// The JSON-RPC client of the Solana nodes listed in Explorer.chain.config.rpc (the protocol part is js/net/jsonrpc.js), and the two
 // reads that depend on the transaction version.
 //
 // Solana transactions have versions (legacy, 0, and now 1...). A node refuses to give a block or a transaction that is of a
@@ -7,13 +7,13 @@
 // asks for more, takes that number, remembers it and asks again: a new version of the format does not break the page.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
 
-  const rpc = BTC.jsonrpc.create({ urls: () => BTC.chain.config.rpc, timeoutMs: () => BTC.chain.config.rpcTimeoutMs });
+  const rpc = Explorer.jsonrpc.create({ urls: () => Explorer.chain.config.rpc, timeoutMs: () => Explorer.chain.config.rpcTimeoutMs });
 
   let version = null; // the version supported so far (starts at config.maxTxVersion)
-  const current = () => (version ??= BTC.chain.config.maxTxVersion);
+  const current = () => (version ??= Explorer.chain.config.maxTxVersion);
 
   /** The version a node asks for in a -32015 error, or null when the error is something else. */
   function versionAsked(e) {

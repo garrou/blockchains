@@ -1,9 +1,9 @@
-// The towers of the next block, as the engine keeps them (BTC.chain.createPending): a full snapshot, then deltas.
+// The towers of the next block, as the engine keeps them (Explorer.chain.createPending): a full snapshot, then deltas.
 // Same holder as Bitcoin's; the raw messages come from data/live.js: { snapshot: tower[] } or { added: tower[], removed: txid[] }.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
 
   function create() {
     let map = null;            // txid -> tower (null until the first snapshot)

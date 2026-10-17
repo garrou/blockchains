@@ -1,14 +1,15 @@
 // WebSocket client for mempool.space: connection, subscriptions, reconnection with backoff. Dispatches parsed messages.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   let ws = null, retry = 0, handlers = {};
 
   const send = (obj) => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); };
 
   function open() {
-    ws = new WebSocket(BTC.chain.config.ws);
+    ws = new WebSocket(Explorer.chain.config.ws);
     ws.onopen = () => {
       retry = 0;
       handlers.onStatus?.(true);
@@ -35,7 +36,7 @@
   /** (Re)subscribes to the contents of the next block (needed again after every mined block). */
   function trackNextBlock() { send({ 'track-mempool-block': 0 }); }
 
-  BTC.socket = {
+  Explorer.bitcoin.socket = {
     /** handlers: onStatus(bool), onOpen(), onBlock(block), onUpcoming(list), onProjected(raw), onTransactions(list), onTxids(ids) */
     connect(h) { handlers = h; open(); },
     trackNextBlock,

@@ -3,8 +3,8 @@
 //   tower = what the engine draws: { txid, vsize (gas), rate (gwei per gas), ... } (js/core/chain.js)
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
   const { big, weiToGwei } = E.format;
 
   // The first 4 bytes of a call say which function it is. A short list of the best known, to say more than "contract call".

@@ -1,8 +1,8 @@
 // Ethereum addresses: validity and the mixed-case checksum (EIP-55). Pure.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
 
   const isAddress = (s) => /^0x[0-9a-fA-F]{40}$/.test(s);
 

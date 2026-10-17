@@ -2,9 +2,9 @@
 //
 // The ENGINE is everything that draws blocks, towers and the camera, keeps the list of blocks, the feed and the scene
 // in sync: core/, scene/, state/, ui/, controllers/ and app.js. It knows nothing about any blockchain.
-// A CHAIN is one object, registered with BTC.defineChain(spec) before the engine's own scripts run: it gives the engine
+// A CHAIN is one object, registered with Explorer.defineChain(spec) before the engine's own scripts run: it gives the engine
 // its numbers (how big is a block, which fee rates are cheap or expensive), its words (what a block card says) and,
-// later in this contract, where its data comes from. The engine only ever reads them from BTC.chain.
+// later in this contract, where its data comes from. The engine only ever reads them from Explorer.chain.
 // Everything that is specific to one chain lives in its own folder: js/chains/<name>/ (Bitcoin: js/chains/bitcoin/).
 //
 // The block model the engine reads (whatever the chain): { id, height, previousblockhash, timestamp }; any other field
@@ -16,7 +16,7 @@
 //   coinbase: the block reward transaction (drawn gold, in the corner), approx: size unknown (provisional data)
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
 
   // What a chain MUST provide: [path in the object, expected typeof, what the engine uses it for].
   const REQUIRED = [
@@ -73,7 +73,7 @@
     theme: { accent: 0x8aa4d6 },
     nextBlock: true,
     createPending: () => ({ apply: () => null, hasData: () => false, has: () => false, size: () => 0, values: () => [], takeFresh: () => [], reset() {} }),
-    blockNumber: (b) => BTC.format.number(b.height),
+    blockNumber: (b) => Explorer.format.number(b.height),
     openTx() {},
     openBlock() {},
     search() {},
@@ -100,10 +100,10 @@
     if (problems.length) throw new Error(`Chain "${spec.id ?? '?'}" does not fit the engine contract (js/core/chain.js):\n${problems.join('\n')}`);
   }
 
-  /** Registers the chain the page works with (BTC.chain). */
-  BTC.defineChain = (spec) => {
+  /** Registers the chain the page works with (Explorer.chain). */
+  Explorer.defineChain = (spec) => {
     validate(spec);
-    BTC.chain = { ...DEFAULTS, ...spec };
-    return BTC.chain;
+    Explorer.chain = { ...DEFAULTS, ...spec };
+    return Explorer.chain;
   };
 })();

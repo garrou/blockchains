@@ -1,9 +1,9 @@
 // Live transaction feed model: dedup, bounded buffer, arrival rate. Pure state (time is passed in).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
 
-  function create(cfg = BTC.config.feed) {
+  function create(cfg = Explorer.config.feed) {
     const seen = new Set();
     const buffer = [];   // arrivals waiting to be displayed (oldest first)
     const stamps = [];   // arrival times (ms), for the tx/s rate
@@ -41,5 +41,5 @@
     };
   }
 
-  BTC.feed = { create };
+  Explorer.feed = { create };
 })();

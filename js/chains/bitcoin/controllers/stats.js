@@ -1,7 +1,8 @@
 // Refreshes the network statistics bar.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   let last = 0, running = false;
 
@@ -10,16 +11,16 @@
     running = true;
     last = Date.now();
     try {
-      const [hr, adj] = await Promise.allSettled([BTC.api.hashrate3d(), BTC.api.difficultyAdjustment()]);
-      if (hr.status === 'fulfilled') BTC.ui.statsBar.renderHashrate(BTC.stats.fromHashrate(hr.value));
+      const [hr, adj] = await Promise.allSettled([Explorer.bitcoin.api.hashrate3d(), Explorer.bitcoin.api.difficultyAdjustment()]);
+      if (hr.status === 'fulfilled') Explorer.ui.statsBar.renderHashrate(Explorer.bitcoin.stats.fromHashrate(hr.value));
       else console.warn('hashrate', hr.reason);
-      if (adj.status === 'fulfilled') BTC.ui.statsBar.renderAdjustment(BTC.stats.fromAdjustment(adj.value));
+      if (adj.status === 'fulfilled') Explorer.ui.statsBar.renderAdjustment(Explorer.bitcoin.stats.fromAdjustment(adj.value));
       else console.warn('difficulty adjustment', adj.reason);
     } finally { running = false; }
   }
 
   /** Refreshes unless it was done very recently. */
-  function maybeRefresh() { if (Date.now() - last > BTC.chain.config.stats.minGapMs) refresh(); }
+  function maybeRefresh() { if (Date.now() - last > Explorer.chain.config.stats.minGapMs) refresh(); }
 
-  BTC.statsCtl = { refresh, maybeRefresh };
+  Explorer.bitcoin.statsCtl = { refresh, maybeRefresh };
 })();

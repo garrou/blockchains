@@ -2,7 +2,8 @@
 // Format not verified live: txs are accepted as [txid, fee, vsize, value] arrays or as objects.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   function create() {
     let map = null;            // txid -> tx (null until the first snapshot)
@@ -12,12 +13,12 @@
       /** Applies a `projected-block-transactions` message. Returns {added} (txs that just entered), or null if ignored. */
       apply(raw) {
         if (Array.isArray(raw.blockTransactions)) {
-          map = new Map(raw.blockTransactions.map(BTC.txs.normalizeProjected).map((t) => [t.txid, t]));
+          map = new Map(raw.blockTransactions.map(Explorer.bitcoin.txs.normalizeProjected).map((t) => [t.txid, t]));
           return { added: [] };
         }
         if (raw.delta && map) {
           (raw.delta.removed || []).forEach((id) => map.delete(id));
-          const added = (raw.delta.added || []).map(BTC.txs.normalizeProjected);
+          const added = (raw.delta.added || []).map(Explorer.bitcoin.txs.normalizeProjected);
           added.forEach((t) => { map.set(t.txid, t); fresh.add(t.txid); });
           return { added };
         }
@@ -37,5 +38,5 @@
     };
   }
 
-  BTC.projection = { create };
+  Explorer.bitcoin.projection = { create };
 })();

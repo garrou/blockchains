@@ -2,9 +2,9 @@
 // the dialog itself (opening, closing, "Loading…") is the engine's: ui/dialog.js.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const { el } = BTC.dom;
-  const F = BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const { el } = Explorer.dom;
+  const F = Explorer.format;
   const MAX_IO_ROWS = 20; // inputs / outputs shown per transaction
 
   let handlers = {};
@@ -12,7 +12,7 @@
 
   function show(...nodes) {
     page = null; // whatever the dialog showed is replaced
-    BTC.ui.dialog.show(...nodes);
+    Explorer.ui.dialog.show(...nodes);
   }
 
   const fields = (rows) => el('dl', {}, rows.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)]));
@@ -35,7 +35,7 @@
 
   /** The line above a transaction of an address page: when it was mined and what it did to the address's balance. */
   function txBalance(tx, address) {
-    const st = tx.status, net = BTC.address.delta(tx, address);
+    const st = tx.status, net = Explorer.bitcoin.address.delta(tx, address);
     return el('div', { class: 'tx-meta' },
       st.confirmed
         ? el('span', {}, 'Block ', link(`#${F.number(st.block_height)}`, () => handlers.onOpenBlock(st.block_hash)), ` · ${F.date(st.block_time)}`)
@@ -49,7 +49,7 @@
       : i.prevout ? ioLine(i.prevout.scriptpubkey_address, i.prevout.scriptpubkey_type, i.prevout.value, me)
         : el('li', {}, mono('Unknown input'), el('span', {}, '—'))));
     const outputs = tx.vout.map((o) => ioLine(o.scriptpubkey_address, o.scriptpubkey_type, o.value, me));
-    const inTotal = BTC.txs.inputTotal(tx);
+    const inTotal = Explorer.bitcoin.txs.inputTotal(tx);
     const id = linked ? link(tx.txid, () => handlers.onOpenTx(tx.txid), ' mono') : mono(tx.txid);
     return el('div', { class: 'tx-card' }, id, me ? txBalance(tx, me) : null,
       el('div', { class: 'io' },
@@ -57,31 +57,31 @@
           el('span', { class: 'io-total' }, inTotal ? `${inTotal.partial ? '≥ ' : ''}${F.btc(inTotal.sum)}` : 'new coins'),
           el('ul', {}, limited(inputs))),
         el('div', {}, el('b', {}, `Outputs (${tx.vout.length})`),
-          el('span', { class: 'io-total' }, F.btc(BTC.txs.outputTotal(tx))),
+          el('span', { class: 'io-total' }, F.btc(Explorer.bitcoin.txs.outputTotal(tx))),
           el('ul', {}, limited(outputs)))));
   }
 
   const txsTitle = (loaded, total) => `Transactions (${F.number(loaded)} / ${F.number(total)})`;
 
-  BTC.ui.detail = {
+  Explorer.ui.detail = {
     /**
      * handlers: onOpenTx(txid), onOpenBlock(hash), onOpenAddress(address), onMoreTxs() (older transactions of the address),
      * onShowInScene() (the address page offers to show its transactions in the 3D scene; absent without 3D)
      */
     init(h) { handlers = h; },
-    loading() { page = null; BTC.ui.dialog.loading(); },
-    message(text) { page = null; BTC.ui.dialog.message(text); },
+    loading() { page = null; Explorer.ui.dialog.loading(); },
+    message(text) { page = null; Explorer.ui.dialog.message(text); },
 
     /** tx: full transaction from /tx/:txid */
     tx(tx) {
-      const st = tx.status, inTotal = BTC.txs.inputTotal(tx), rate = BTC.txs.fullFeeRate(tx);
+      const st = tx.status, inTotal = Explorer.bitcoin.txs.inputTotal(tx), rate = Explorer.bitcoin.txs.fullFeeRate(tx);
       show(el('h2', {}, 'Transaction'), fields([
         ['Txid', mono(tx.txid)],
         ['Status', st.confirmed
           ? el('span', {}, 'Confirmed in block ', link(`#${F.number(st.block_height)}`, () => handlers.onOpenBlock(st.block_hash)), ` · ${F.date(st.block_time)}`)
           : 'Unconfirmed (mempool)'],
         ...(inTotal ? [['Total input', `${inTotal.partial ? '≥ ' : ''}${F.btc(inTotal.sum)}`]] : []),
-        ['Total output', F.btc(BTC.txs.outputTotal(tx))],
+        ['Total output', F.btc(Explorer.bitcoin.txs.outputTotal(tx))],
         ['Fee', tx.fee != null ? `${F.number(tx.fee)} sats${rate != null ? ` (${rate.toFixed(1)} sat/vB)` : ''}` : '—'],
         ['Size', `${F.number(tx.size)} B · ${F.number(Math.ceil(tx.weight / 4))} vB`],
       ]), txCard(tx, false));
@@ -95,7 +95,7 @@
         ['Date', `${F.date(b.timestamp)} (${F.ago(b.timestamp)})`],
         ['Transactions', F.number(b.tx_count)],
         ['Size', `${(b.size / 1e6).toFixed(2)} MB · ${(b.weight / 1e6).toFixed(2)} MWU`],
-        ['Fill', `${F.fixed(BTC.chain.fill(b) * 100)}% of capacity (4 MWU)`],
+        ['Fill', `${F.fixed(Explorer.chain.fill(b) * 100)}% of capacity (4 MWU)`],
         ['Miner', x?.pool?.name ?? '—'],
         ['Median fee', x?.medianFee != null ? `${x.medianFee.toFixed(1)} sat/vB` : '—'],
         ...(x?.totalFees != null ? [['Total fees', F.btc(x.totalFees)]] : []),
@@ -121,7 +121,7 @@
         : null;
       show(el('h2', {}, 'Address'), fields([
         ['Address', mono(a.address)],
-        ['Type', BTC.address.kind(a.address)],
+        ['Type', Explorer.bitcoin.address.kind(a.address)],
         ['Balance', F.btc(a.balance)],
         ...(a.pendingTxs ? [['Unconfirmed', `${F.btcSigned(a.pending)} (${F.number(a.pendingTxs)} transaction${a.pendingTxs > 1 ? 's' : ''} waiting for a block)`]] : []),
         ['Total received', F.btc(a.received)],

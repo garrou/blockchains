@@ -1,11 +1,11 @@
-// Shared constants of the engine (what is specific to a chain is in js/chains/<name>/chain.js, BTC.chain.config).
-// Every file of the app is a classic script that reads/extends the global `BTC` namespace
+// Shared constants of the engine (what is specific to a chain is in js/chains/<name>/chain.js, Explorer.chain.config).
+// Every file of the app is a classic script that reads/extends the global `Explorer` namespace
 // (no ES modules: the page must work when opened from disk and on any static host, without a build step).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
 
-  BTC.config = Object.freeze({
+  Explorer.config = Object.freeze({
     feed: {
       maxRows: 200,         // rows kept in the feed
       pollMs: 1000,         // the feed source returns only a few transactions per call (Bitcoin: ~10): poll it often so none are missed

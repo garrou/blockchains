@@ -2,28 +2,28 @@
 // where the epoch is. Part is asked of the node (rate, epoch), part is computed from the blocks the page holds.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
-  const F = BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
+  const F = Explorer.format;
 
   let epoch = null, perf = null;
 
   /** Redraws what comes from the blocks the page holds (cheap, no request). */
   function refreshLocal() {
     const x = S.format;
-    const last = BTC.state.blocks[0];
-    if (last) BTC.ui.statsBar.renderSlot({ value: F.number(last.slot), sub: `a block every ~0.4 s · one in ${BTC.chain.config.sample} shown` });
+    const last = Explorer.state.blocks[0];
+    if (last) Explorer.ui.statsBar.renderSlot({ value: F.number(last.slot), sub: `a block every ~0.4 s · one in ${Explorer.chain.config.sample} shown` });
     const rows = S.data.latestRows();
     if (rows && rows.length) {
       const share = (pred) => (rows.filter(pred).length / rows.length) * 100;
       const cu = rows.reduce((s, r) => s + (r.cu ?? 0), 0);
-      BTC.ui.statsBar.renderMix({
+      Explorer.ui.statsBar.renderMix({
         value: F.fixed(share((r) => r.kind === 'vote'), 0),
         sub: `votes · ${F.fixed(share((r) => !r.ok))}% failed · ${F.fixed(share((r) => r.priority > 0))}% pay a priority fee · ≈ ${x.cu(cu)} CU`,
       });
     }
-    if (perf) BTC.ui.statsBar.renderTps(perf);
-    if (epoch) BTC.ui.statsBar.renderEpoch(epoch);
+    if (perf) Explorer.ui.statsBar.renderTps(perf);
+    if (epoch) Explorer.ui.statsBar.renderEpoch(epoch);
   }
 
   /** Asks the node: the transaction rate over the last minute, the epoch. */
@@ -45,8 +45,8 @@
   function start() {
     refreshLocal();
     refresh();
-    setInterval(refreshLocal, BTC.chain.config.stats.localMs);
-    setInterval(refresh, BTC.chain.config.stats.refreshMs);
+    setInterval(refreshLocal, Explorer.chain.config.stats.localMs);
+    setInterval(refresh, Explorer.chain.config.stats.refreshMs);
   }
 
   S.statsCtl = { refresh, refreshLocal, start };

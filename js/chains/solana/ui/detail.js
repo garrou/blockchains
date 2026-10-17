@@ -2,12 +2,12 @@
 // controllers/details.js; the dialog itself (opening, closing, "Loading…") is the engine's: ui/dialog.js.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
-  const { el } = BTC.dom;
-  const F = BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
+  const { el } = Explorer.dom;
+  const F = Explorer.format;
   const X = () => S.format;
-  const show = (...nodes) => BTC.ui.dialog.show(...nodes);
+  const show = (...nodes) => Explorer.ui.dialog.show(...nodes);
 
   let handlers = {};
 
@@ -46,11 +46,11 @@
   /** Size of an account's data: parsed accounts say it, the others carry it base64-encoded as [data, 'base64']. */
   const dataSize = (a) => (a.data?.space != null ? a.data.space : Array.isArray(a.data) ? Math.floor((a.data[0].length * 3) / 4) : 0);
 
-  BTC.ui.detail = {
+  Explorer.ui.detail = {
     /** handlers: onOpenTx(signature), onOpenSlot(slot), onOpenAddress(address) */
     init(h) { handlers = h; },
-    loading() { BTC.ui.dialog.loading(); },
-    message(text) { BTC.ui.dialog.message(text); },
+    loading() { Explorer.ui.dialog.loading(); },
+    message(text) { Explorer.ui.dialog.message(text); },
 
     /** v: { signature, tx (getTransaction, jsonParsed), slot, blockTime } */
     tx(v) {
@@ -84,7 +84,7 @@
       })),
       changes('SOL balance changes', sol), changes('Token balance changes', tokens),
       meta.logMessages?.length
-        ? el('details', { class: 'sol-logs' }, el('summary', {}, `Program log (${meta.logMessages.length} lines)`), el('pre', {}, meta.logMessages.slice(0, BTC.chain.config.logLines).join('\n') + (meta.logMessages.length > BTC.chain.config.logLines ? '\n…' : '')))
+        ? el('details', { class: 'sol-logs' }, el('summary', {}, `Program log (${meta.logMessages.length} lines)`), el('pre', {}, meta.logMessages.slice(0, Explorer.chain.config.logLines).join('\n') + (meta.logMessages.length > Explorer.chain.config.logLines ? '\n…' : '')))
         : null);
     },
 
@@ -103,7 +103,7 @@
         b.blockHeight != null ? ['Block height', F.number(b.blockHeight)] : null,
         ['Parent', el('span', {}, `slot `, slotLink(b.parentSlot))],
         ['Transactions', `${F.number(rows.length)} · ${F.number(votes)} votes (${pct(votes, rows.length)}) · ${F.number(failed)} failed (${pct(failed, rows.length)})`],
-        ['Compute', `≈ ${F.number(cu)} units estimated (${pct(cu, BTC.chain.capacity.size)} of ${x.cu(BTC.chain.capacity.size)}): the light read of a block does not give the real figure, a transaction page does`],
+        ['Compute', `≈ ${F.number(cu)} units estimated (${pct(cu, Explorer.chain.capacity.size)} of ${x.cu(Explorer.chain.capacity.size)}): the light read of a block does not give the real figure, a transaction page does`],
         ['Fees', `${x.sol(fees, 6)} · ${x.sol(tips, 6)} of it priority fees paid by ${F.number(paying)} transactions`],
       ]),
       el('h3', {}, `Highest priority fees (${top.length})`), top.map(txCard));

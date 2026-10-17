@@ -3,12 +3,13 @@
 // average fleet efficiency (J/TH).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
   /** hashrate payload (/v1/mining/hashrate/3d) -> {hashrate (H/s), difficulty, powerGW, twhPerYear} (null when unknown). */
-  function fromHashrate(hr, jPerTh = BTC.chain.config.stats.jPerTh) {
+  function fromHashrate(hr, jPerTh = Explorer.chain.config.stats.jPerTh) {
     const series = (hr.hashrates || []).map((p) => num(p.avgHashrate)).filter((v) => v != null);
     const hashrate = num(hr.currentHashrate) ?? series.at(-1) ?? null;
     const difficulty = num(hr.currentDifficulty) ?? num(hr.difficulty?.at?.(-1)?.difficulty);
@@ -27,5 +28,5 @@
     };
   }
 
-  BTC.stats = { fromHashrate, fromAdjustment };
+  Explorer.bitcoin.stats = { fromHashrate, fromAdjustment };
 })();

@@ -1,8 +1,8 @@
 // Base58 (the alphabet Solana writes keys and signatures in), just enough to tell what a string could be. Pure.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
 
   const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   const INDEX = new Map([...ALPHABET].map((c, i) => [c, BigInt(i)]));

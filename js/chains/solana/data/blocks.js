@@ -1,13 +1,13 @@
-// What the engine asks the network for, in Solana words (BTC.chain.data): the blocks shown (one slot group in `sample`), their
+// What the engine asks the network for, in Solana words (Explorer.chain.data): the blocks shown (one slot group in `sample`), their
 // transactions as towers. Reads the node through data/rpc.js.
 //
 // Two reads of a block: only its signatures (light: gives the list of blocks and their number of transactions), and with the
 // `accounts` detail (heavy, a megabyte or more: fee, compute units and accounts of every transaction) for the blocks the scene draws.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
-  const cfg = () => BTC.chain.config;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
+  const cfg = () => Explorer.chain.config;
 
   const known = new Map(); // block id -> block, for the blocks seen (a block cannot be found by its hash on Solana)
 

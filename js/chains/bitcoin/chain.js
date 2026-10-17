@@ -1,11 +1,11 @@
 // Bitcoin, as the engine sees it (see the contract in js/core/chain.js): its numbers, its words, its constants.
-// Loaded before the engine files that read BTC.chain at load time (core/colors.js). What it delegates to (BTC.api,
-// BTC.socket, BTC.txs, BTC.projection, BTC.format, BTC.details, BTC.walletCtl...) is only called later, once every script
+// Loaded before the engine files that read Explorer.chain at load time (core/colors.js). What it delegates to (Explorer.bitcoin.api,
+// Explorer.bitcoin.socket, Explorer.bitcoin.txs, Explorer.bitcoin.projection, Explorer.format, Explorer.bitcoin.details, Explorer.bitcoin.walletCtl...) is only called later, once every script
 // has loaded.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const F = () => BTC.format; // looked up when used: this file loads before core/format.js
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const F = () => Explorer.format; // looked up when used: this file loads before core/format.js
 
   const BLOCK_VSIZE = 1e6;   // virtual bytes in a full block: the scale of the towers (a full block fills the platform)
   const BLOCK_WEIGHT = 4e6;  // weight units in a full block (4 MWU = 1 Mvb, since vsize = weight / 4)
@@ -17,18 +17,18 @@
   // bare txids: towers flagged `approx` (sizes unknown), which the engine replaces once the real data is there.
   async function blockTowers(b) {
     try {
-      const rows = await BTC.api.blockSummary(b.id);
-      if (BTC.txs.isCompleteSummary(rows, b.tx_count)) return BTC.txs.fromSummary(rows);
+      const rows = await Explorer.bitcoin.api.blockSummary(b.id);
+      if (Explorer.bitcoin.txs.isCompleteSummary(rows, b.tx_count)) return Explorer.bitcoin.txs.fromSummary(rows);
       console.warn(`block ${b.height} summary incomplete (${Array.isArray(rows) ? rows.length : '?'}/${b.tx_count || 0}), retrying later`);
     } catch (e) { console.warn('summary unavailable, falling back to /txids', e); }
-    return BTC.txs.provisional(await BTC.api.blockTxids(b.id), b.extras?.medianFee);
+    return Explorer.bitcoin.txs.provisional(await Explorer.bitcoin.api.blockTxids(b.id), b.extras?.medianFee);
   }
 
-  BTC.defineChain({
+  Explorer.defineChain({
     id: 'bitcoin',
     name: 'Bitcoin',
 
-    // Constants only the Bitcoin files read (BTC.chain.config.*)
+    // Constants only the Bitcoin files read (Explorer.chain.config.*)
     config: {
       api: 'https://mempool.space/api',
       ws: 'wss://mempool.space/api/v1/ws',
@@ -86,68 +86,68 @@
         : t.approx
           ? `${f.short(t.txid, 12, 8)}\n(size and fee unavailable)`
           : `${f.short(t.txid, 12, 8)}\n${t.rate.toFixed(1)} sat/vB · ${f.number(t.vsize)} vB\nfee ${f.number(t.fee)} sats`;
-      const mine = BTC.walletCtl.entryOf(t.txid);
-      return mine ? `${text}\n★ ${f.btcSigned(mine.net)} for ${f.short(BTC.state.wallet.address, 8, 6)}` : text;
+      const mine = Explorer.bitcoin.walletCtl.entryOf(t.txid);
+      return mine ? `${text}\n★ ${f.btcSigned(mine.net)} for ${f.short(Explorer.state.wallet.address, 8, 6)}` : text;
     },
 
     // ----- data (mempool.space REST API: chains/bitcoin/data/api.js) -----
     data: {
-      latestBlocks: () => BTC.api.blocks(),
-      blocksFrom: (height) => BTC.api.blocksFrom(height),
-      heightOf: async (hash) => (await BTC.api.blockBasic(hash)).height,
-      hashOf: (height) => BTC.api.blockHash(height),
+      latestBlocks: () => Explorer.bitcoin.api.blocks(),
+      blocksFrom: (height) => Explorer.bitcoin.api.blocksFrom(height),
+      heightOf: async (hash) => (await Explorer.bitcoin.api.blockBasic(hash)).height,
+      hashOf: (height) => Explorer.bitcoin.api.blockHash(height),
       blockTowers,
-      recentTxs: () => BTC.api.recent(),
+      recentTxs: () => Explorer.bitcoin.api.recent(),
     },
 
     // ----- live (mempool.space WebSocket: chains/bitcoin/data/socket.js) -----
     live: {
       // the WebSocket speaks mempool.space's formats: transactions are turned into pending txs here
-      connect: (h) => BTC.socket.connect({
+      connect: (h) => Explorer.bitcoin.socket.connect({
         ...h,
-        onTransactions: (txs) => h.onTransactions(txs.map(BTC.txs.normalizeProjected)),
+        onTransactions: (txs) => h.onTransactions(txs.map(Explorer.bitcoin.txs.normalizeProjected)),
         onTxids: (ids) => h.onTxids(ids.map((txid) => ({ txid }))),
       }),
-      trackNext: () => BTC.socket.trackNextBlock(),
+      trackNext: () => Explorer.bitcoin.socket.trackNextBlock(),
     },
 
     // The next block's towers: a full snapshot then deltas (chains/bitcoin/core/projection.js)
-    createPending: () => BTC.projection.create(),
+    createPending: () => Explorer.bitcoin.projection.create(),
 
     // ----- hooks: the Bitcoin-only screens and features (all the files below are in chains/bitcoin/) -----
-    openTx: (txid) => BTC.details.openTx(txid),
-    openBlock: (hash) => BTC.details.openBlock(hash),
-    search: (text) => BTC.searchCtl.run(text),                  // a height, a block hash, a txid or an address
-    onHighlight: () => BTC.walletCtl.onSceneChange(),           // the towers lit for the tracked address may have changed
+    openTx: (txid) => Explorer.bitcoin.details.openTx(txid),
+    openBlock: (hash) => Explorer.bitcoin.details.openBlock(hash),
+    search: (text) => Explorer.bitcoin.searchCtl.run(text),                  // a height, a block hash, a txid or an address
+    onHighlight: () => Explorer.bitcoin.walletCtl.onSceneChange(),           // the towers lit for the tracked address may have changed
     onBlock() {
-      BTC.statsCtl.maybeRefresh();                              // a new block moves the retarget progress
-      BTC.walletCtl.onBlock();                                  // it may confirm transactions of the tracked address
+      Explorer.bitcoin.statsCtl.maybeRefresh();                              // a new block moves the retarget progress
+      Explorer.bitcoin.walletCtl.onBlock();                                  // it may confirm transactions of the tracked address
     },
     onVisible() {
-      BTC.walletCtl.catchUp();
-      BTC.statsCtl.maybeRefresh();
+      Explorer.bitcoin.walletCtl.catchUp();
+      Explorer.bitcoin.statsCtl.maybeRefresh();
     },
 
     start({ scene }) {
-      const d = BTC.details;
-      BTC.ui.detail.init({
+      const d = Explorer.bitcoin.details;
+      Explorer.ui.detail.init({
         onOpenTx: d.openTx, onOpenBlock: d.openBlock, onOpenAddress: d.openAddress, onMoreTxs: d.moreAddressTxs,
         onShowInScene: scene ? () => { // light up the transactions of the address page in the 3D scene
           const a = d.shownAddress();
           if (!a) return;
-          BTC.walletCtl.track(a.address, a.txs, a.summary);
-          BTC.ui.dialog.close();
+          Explorer.bitcoin.walletCtl.track(a.address, a.txs, a.summary);
+          Explorer.ui.dialog.close();
         } : null,
       });
       if (scene) { // the panel of the tracked address lives over the 3D view
-        BTC.walletCtl.setDim(BTC.ui.tracker.init({
+        Explorer.bitcoin.walletCtl.setDim(Explorer.ui.tracker.init({
           format: (e) => F().btcSigned(e.net),
-          onJump: BTC.walletCtl.jump, onOpenAddress: d.openAddress, onRefresh: BTC.walletCtl.refresh,
-          onClear: BTC.walletCtl.clear, onMore: BTC.walletCtl.loadOlder, onDim: BTC.walletCtl.setDim,
+          onJump: Explorer.bitcoin.walletCtl.jump, onOpenAddress: d.openAddress, onRefresh: Explorer.bitcoin.walletCtl.refresh,
+          onClear: Explorer.bitcoin.walletCtl.clear, onMore: Explorer.bitcoin.walletCtl.loadOlder, onDim: Explorer.bitcoin.walletCtl.setDim,
         }).dim);
       }
-      BTC.statsCtl.refresh();
-      setInterval(BTC.statsCtl.refresh, BTC.chain.config.stats.refreshMs);
+      Explorer.bitcoin.statsCtl.refresh();
+      setInterval(Explorer.bitcoin.statsCtl.refresh, Explorer.chain.config.stats.refreshMs);
     },
   });
 })();

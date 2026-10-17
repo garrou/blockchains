@@ -3,12 +3,12 @@
 // A mined block never changes: its contents are downloaded once and kept, so browsing the history never loses detail.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = BTC.config.scene;
-  const state = BTC.state;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = Explorer.config.scene;
+  const state = Explorer.state;
 
   let scene = null;
-  const projection = BTC.chain.createPending(); // the towers of the next block, as the chain describes them
+  const projection = Explorer.chain.createPending(); // the towers of the next block, as the chain describes them
   // block id -> { promise, txs }: the contents of a block (txs is set once they are here), the most recently used last.
   // Complete contents are kept (up to S.cache blocks); the same array reference avoids rebuilding the scene.
   const cache = new Map();
@@ -20,19 +20,19 @@
   let projTimer = 0, projShown = false;
 
   // The blocks that exist in 3D: a window that slides with the camera (it is centered on the focused slot).
-  const windowStart = () => BTC.blocks.windowStart(state.blocks, state.focusId, S.reach);
-  const windowBlocks = () => BTC.blocks.windowAround(state.blocks, state.focusId, S.reach);
-  const hasNext = () => BTC.chain.nextBlock !== false; // a chain without a mempool has no next block to draw
+  const windowStart = () => Explorer.blocks.windowStart(state.blocks, state.focusId, S.reach);
+  const windowBlocks = () => Explorer.blocks.windowAround(state.blocks, state.focusId, S.reach);
+  const hasNext = () => Explorer.chain.nextBlock !== false; // a chain without a mempool has no next block to draw
   const showsNext = () => hasNext() && !state.detached && windowStart() === 0; // the next block only makes sense next to the latest one
   const known = (id) => { const e = cache.get(id); return !!(e && e.txs && !e.txs.approx); }; // complete contents in memory
-  const near = (b) => BTC.blocks.isNear(windowBlocks(), b.id, state.focusId, S.detailRadius);
-  const wantsDetail = (b) => BTC.blocks.wantsDetail(windowBlocks(), b.id, state.focusId, S.detailRadius, known);
-  const distance = (b) => BTC.blocks.slotDistance(windowBlocks(), b.id, state.focusId) ?? Infinity; // Infinity: not in the window
+  const near = (b) => Explorer.blocks.isNear(windowBlocks(), b.id, state.focusId, S.detailRadius);
+  const wantsDetail = (b) => Explorer.blocks.wantsDetail(windowBlocks(), b.id, state.focusId, S.detailRadius, known);
+  const distance = (b) => Explorer.blocks.slotDistance(windowBlocks(), b.id, state.focusId) ?? Infinity; // Infinity: not in the window
 
   /** The scene message always describes the block the camera is on. */
   function updateMessage() {
     const st = status.get(state.focusId);
-    BTC.ui.hud.setMessage(st === 'loading' ? 'Loading block…'
+    Explorer.ui.hud.setMessage(st === 'loading' ? 'Loading block…'
       : st === 'error' ? "Can't load the block right now, retrying…"
         : st === 'failed' ? "Can't load the block. Click it to retry." : '');
   }
@@ -58,7 +58,7 @@
       running++;
       let timer;
       const timeout = new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('timeout')), S.loadTimeoutMs); });
-      Promise.race([BTC.chain.data.blockTowers(b), timeout]).then(resolve, reject).finally(() => { clearTimeout(timer); running--; pump(); });
+      Promise.race([Explorer.chain.data.blockTowers(b), timeout]).then(resolve, reject).finally(() => { clearTimeout(timer); running--; pump(); });
     }
   }
 
@@ -93,7 +93,7 @@
 
   /** Light shape of a block: a solid block as high as it is full, colored by its median fee. */
   function simplify(b) {
-    scene.setSummary(b.id, { fill: BTC.chain.fill(b), rate: BTC.chain.typicalRate(b) });
+    scene.setSummary(b.id, { fill: Explorer.chain.fill(b), rate: Explorer.chain.typicalRate(b) });
     light.add(b.id);
   }
 
@@ -151,7 +151,7 @@
     scene.setSlots([
       ...(showsNext() ? [{ id: S.nextId, kind: 'next', label: 'NEXT', pos: 0 }] : []),
       ...shown.map((b, i) => ({
-        id: b.id, kind: 'mined', label: `#${BTC.chain.blockNumber(b)}`, prev: b.previousblockhash, pos: first + i,
+        id: b.id, kind: 'mined', label: `#${Explorer.chain.blockNumber(b)}`, prev: b.previousblockhash, pos: first + i,
         ...(b.id === fresh && showsNext() ? { from: 0, fresh: true } : {}),
       })),
     ]);
@@ -204,10 +204,10 @@
     projShown = false;
     clearTimeout(projTimer); projTimer = 0;
     if (scene) scene.setTxs(S.nextId, null);
-    BTC.chain.live.trackNext?.();
+    Explorer.chain.live.trackNext?.();
   }
 
-  BTC.sceneSync = {
+  Explorer.sceneSync = {
     init(sceneInstance) { scene = sceneInstance; },
     active: () => scene !== null,
     sync, focus, publishNow, onProjected, resetProjection,

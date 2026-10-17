@@ -2,8 +2,8 @@
 // ENS lookups. Pure. Everything is hex strings.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
 
   const strip = (hex) => hex.replace(/^0x/, '');
   const word = (hex, i) => strip(hex).slice(i * 64, i * 64 + 64);

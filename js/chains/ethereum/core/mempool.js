@@ -2,8 +2,8 @@
 // A public node does not give the mempool: the page sees the transactions its node announces, so this is a sample.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
   const { weiToGwei } = E.format;
 
   function create({ max = 4000, ttlMs = 20 * 60e3 } = {}) {

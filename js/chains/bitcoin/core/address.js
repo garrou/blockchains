@@ -1,7 +1,8 @@
 // Bitcoin addresses: recognizing one in the search box, and reading what the explorer API says about it. Pure.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   // Format only: the checksum is verified by the API (it answers 400 for a mistyped address).
   const LEGACY = /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/; // Base58Check: P2PKH ("1…") and P2SH ("3…")
@@ -78,5 +79,5 @@
     return page.filter((t) => !known.has(t.txid));
   }
 
-  BTC.address = { parse, kind, summary, delta, lastConfirmed, hasMore, fresh };
+  Explorer.bitcoin.address = { parse, kind, summary, delta, lastConfirmed, hasMore, fresh };
 })();

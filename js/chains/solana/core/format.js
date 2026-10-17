@@ -3,8 +3,8 @@
 // last digits are rounded (which no screen of this page shows).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
 
   /** Lamports -> "1.5 SOL": at most maxFrac decimals, trailing zeros trimmed; a tiny non-zero amount reads "<0.000001 SOL". */
   function sol(lamports, maxFrac = 6) {
@@ -27,7 +27,7 @@
   }
 
   /** Compute units: "150,000", and "48.2M" for millions. */
-  const cu = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 1 : 2)}M` : BTC.format.number(n));
+  const cu = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 1 : 2)}M` : Explorer.format.number(n));
 
   /** A BigInt with decimals -> "1,234.5678" (at most maxFrac decimals, trailing zeros trimmed): token amounts without float errors. */
   function units(value, decimals, maxFrac = 6) {

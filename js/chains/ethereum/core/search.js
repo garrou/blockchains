@@ -1,8 +1,8 @@
 // What the search box text means for Ethereum. Pure.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
 
   /**
    * -> { type: 'height', height } | { type: 'hash', hash } (a block or a transaction: both are 32 bytes, the page tries the

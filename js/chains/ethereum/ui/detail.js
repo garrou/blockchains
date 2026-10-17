@@ -2,12 +2,12 @@
 // controllers/details.js; the dialog itself (opening, closing, "Loading…") is the engine's: ui/dialog.js.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
-  const { el } = BTC.dom;
-  const F = BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
+  const { el } = Explorer.dom;
+  const F = Explorer.format;
   const X = () => E.format;
-  const show = (...nodes) => BTC.ui.dialog.show(...nodes);
+  const show = (...nodes) => Explorer.ui.dialog.show(...nodes);
 
   let handlers = {};
 
@@ -57,11 +57,11 @@
         el('span', { class: 'amt' }, r.valueWei > 0n ? X().eth(r.valueWei, 5) : '')));
   }
 
-  BTC.ui.detail = {
+  Explorer.ui.detail = {
     /** handlers: onOpenTx(hash), onOpenBlock(id), onOpenAddress(address) */
     init(h) { handlers = h; },
-    loading() { BTC.ui.dialog.loading(); },
-    message(text) { BTC.ui.dialog.message(text); },
+    loading() { Explorer.ui.dialog.loading(); },
+    message(text) { Explorer.ui.dialog.message(text); },
 
     /**
      * v: { r (core/txs.row), tx (raw), receipt|null, block (normalized)|null, transfers, moreTransfers, tokens: Map, pending: pool entry|null }

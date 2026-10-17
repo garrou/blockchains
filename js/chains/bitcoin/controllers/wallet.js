@@ -3,21 +3,22 @@
 // just sent (or mined) shows up by itself.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = BTC.config.scene;
-  const C = BTC.chain.config.wallet;
-  const state = BTC.state;
-  const F = BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
+  const S = Explorer.config.scene;
+  const C = Explorer.chain.config.wallet;
+  const state = Explorer.state;
+  const F = Explorer.format;
 
-  const ui = () => BTC.ui;
-  const sync = () => BTC.sceneSync;
+  const ui = () => Explorer.ui;
+  const sync = () => Explorer.sceneSync;
 
   let timer = 0;              // next reload
   let dim = true;             // "dim the other transactions": a preference of the panel
   let frame = 0;              // pending animation frame of a refresh of the lit marks
   let byTxid = new Map();     // txid -> entry of the tracked wallet (tooltip of the scene)
 
-  const entriesOf = (w) => BTC.wallet.entries(w.txs, w.address);
+  const entriesOf = (w) => Explorer.bitcoin.wallet.entries(w.txs, w.address);
 
   /** What an unconfirmed transaction waits for (shown under its line). */
   function pendingNote(e) {
@@ -37,8 +38,8 @@
     if (!w) return;
     const list = entriesOf(w);
     ui().tracker.render({
-      address: w.address, entries: list, lit: sync().litTxids(), notes: notesOf(list), reach: BTC.wallet.reach(w.txs),
-      more: BTC.wallet.hasOlder(w.txs, w.confirmedTotal), busy: w.busy, failed: w.failed, dim,
+      address: w.address, entries: list, lit: sync().litTxids(), notes: notesOf(list), reach: Explorer.bitcoin.wallet.reach(w.txs),
+      more: Explorer.bitcoin.wallet.hasOlder(w.txs, w.confirmedTotal), busy: w.busy, failed: w.failed, dim,
     });
   }
 
@@ -80,10 +81,10 @@
     w.busy = true;
     ui().tracker.setBusy(true);
     try {
-      const [totals, fresh] = await Promise.all([BTC.api.address(w.address), BTC.api.addressTxs(w.address)]);
+      const [totals, fresh] = await Promise.all([Explorer.bitcoin.api.address(w.address), Explorer.bitcoin.api.addressTxs(w.address)]);
       if (state.wallet !== w) return; // stopped or replaced meanwhile
-      w.confirmedTotal = BTC.address.summary(totals).confirmedTxs;
-      w.txs = BTC.wallet.merge(w.txs, fresh, { total: w.confirmedTotal });
+      w.confirmedTotal = Explorer.bitcoin.address.summary(totals).confirmedTxs;
+      w.txs = Explorer.bitcoin.wallet.merge(w.txs, fresh, { total: w.confirmedTotal });
       w.failed = false;
     } catch (e) {
       console.warn('wallet', e);
@@ -96,12 +97,12 @@
   /** "Load older": the next page of confirmed transactions. */
   async function loadOlder() {
     const w = state.wallet;
-    const last = w && BTC.address.lastConfirmed(w.txs);
+    const last = w && Explorer.bitcoin.address.lastConfirmed(w.txs);
     if (!w || w.busy || !last) return;
     w.busy = true;
     ui().tracker.setBusy(true);
     try {
-      const page = BTC.address.fresh(w.txs, await BTC.api.addressTxsAfter(w.address, last));
+      const page = Explorer.bitcoin.address.fresh(w.txs, await Explorer.bitcoin.api.addressTxsAfter(w.address, last));
       if (state.wallet !== w) return;
       w.txs.push(...page);
       if (!page.length) w.confirmedTotal = w.txs.filter((t) => t.status?.confirmed).length; // nothing older after all: stop offering it
@@ -117,10 +118,10 @@
   /** Brings the camera to the block of a transaction (the next block for an unconfirmed one). */
   async function jump(e) {
     if (!sync().active()) return;
-    if (e.pending) { BTC.nav.focus(S.nextId); return; }
-    if (state.blocks.some((b) => b.id === e.hash)) { BTC.nav.focus(e.hash); return; }
+    if (e.pending) { Explorer.nav.focus(S.nextId); return; }
+    if (state.blocks.some((b) => b.id === e.hash)) { Explorer.nav.focus(e.hash); return; }
     try { // a block outside the loaded list: like a search for it
-      await BTC.nav.goToBlock({ hash: e.hash }, BTC.requests.begin());
+      await Explorer.nav.goToBlock({ hash: e.hash }, Explorer.requests.begin());
     } catch (err) {
       console.warn('wallet jump', err);
       ui().hud.setMessage("Couldn't open this block right now.");
@@ -147,7 +148,7 @@
     apply();
   }
 
-  BTC.walletCtl = {
+  Explorer.bitcoin.walletCtl = {
     track, clear, refresh, loadOlder, jump, onSceneChange,
     /** A block was mined: the address index catches up in a moment, then the list is reloaded. */
     onBlock() { if (state.wallet) schedule(C.afterBlockMs); },

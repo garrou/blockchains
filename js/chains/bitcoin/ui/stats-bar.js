@@ -1,17 +1,17 @@
 // The network statistics bar. View only: the numbers come from core/stats.js.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const { $, el } = BTC.dom;
-  const F = BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const { $, el } = Explorer.dom;
+  const F = Explorer.format;
 
   /** Value with a small unit: "890.0 EH/s". */
   function setValue(id, text, unit) {
     $(`#${id}`).replaceChildren(text, el('em', {}, unit));
   }
 
-  BTC.ui.statsBar = {
-    /** m: result of BTC.stats.fromHashrate */
+  Explorer.ui.statsBar = {
+    /** m: result of Explorer.bitcoin.stats.fromHashrate */
     renderHashrate(m) {
       if (m.hashrate) {
         setValue('st-hash', F.fixed(m.hashrate / 1e18), 'EH/s');
@@ -21,7 +21,7 @@
       }
       if (m.difficulty) setValue('st-diff', F.fixed(m.difficulty / 1e12, 2), 'T');
     },
-    /** m: result of BTC.stats.fromAdjustment */
+    /** m: result of Explorer.bitcoin.stats.fromAdjustment */
     renderAdjustment(m) {
       if (m.change != null) {
         const node = $('#st-adj');

@@ -2,8 +2,8 @@
 // variant for a block that keeps changing (the projected one: towers stay where they are). Pure math.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = BTC.config.scene;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = Explorer.config.scene;
 
   /**
    * Squarified treemap: vals (> 0) -> rectangles {x, y, w, h} in a W x H area, area proportional to the value.
@@ -61,7 +61,7 @@
    * (txs.approx, vsize = 1): whole platform. Returns parallel arrays: list (txs in layout order), rects, heights, and
    * colors (Float32Array, 3 per tx), plus `free` (the rectangles left empty) and `scale` (area per vB).
    */
-  function layoutBlock(txs, order, capacity = BTC.chain.capacity.size) {
+  function layoutBlock(txs, order, capacity = Explorer.chain.capacity.size) {
     const list = [...txs.filter((x) => x.coinbase), ...orderTxs(txs.filter((x) => !x.coinbase), order)];
     const scale = (S.size * S.size) / capacity;
     if (!list.length) return { ...finish(list, []), free: [{ x: 0, y: 0, w: S.size, h: S.size }], scale };
@@ -77,9 +77,9 @@
 
   /** Heights and colors of laid out txs: parallel arrays with the list and its rects. */
   function finish(list, rects) {
-    const heights = list.map((x) => (x.coinbase ? S.frameH - 1 : BTC.colors.towerHeight(x.rate)));
+    const heights = list.map((x) => (x.coinbase ? S.frameH - 1 : Explorer.colors.towerHeight(x.rate)));
     const colors = new Float32Array(list.length * 3);
-    list.forEach((x, k) => colors.set(x.coinbase ? BTC.colors.COINBASE : BTC.colors.rate(x.rate), k * 3));
+    list.forEach((x, k) => colors.set(x.coinbase ? Explorer.colors.COINBASE : Explorer.colors.rate(x.rate), k * 3));
     return { list, rects, heights, colors };
   }
 
@@ -151,7 +151,7 @@
 
     function relayout(txs, order) {
       const total = txs.reduce((s, t) => s + (t.coinbase ? 0 : Math.max(1, t.vsize)), 0);
-      const L = layoutBlock(txs, order, Math.max(BTC.chain.capacity.size, total * HEADROOM));
+      const L = layoutBlock(txs, order, Math.max(Explorer.chain.capacity.size, total * HEADROOM));
       placed = new Map(L.list.map((t, k) => [t.txid, L.rects[k]]));
       free = L.free.filter((r) => r.w * r.h >= MIN_FREE);
       scale = L.scale;
@@ -181,9 +181,9 @@
    * proportional to vsize, a full block = the whole platform) and the same height rule (fee rate). The footprint is a square.
    */
   function nominalTower(vsize, rate) {
-    const side = Math.sqrt((Math.max(1, vsize) * S.size * S.size) / BTC.chain.capacity.size);
-    return { w: side, h: side, height: BTC.colors.towerHeight(rate) };
+    const side = Math.sqrt((Math.max(1, vsize) * S.size * S.size) / Explorer.chain.capacity.size);
+    return { w: side, h: side, height: Explorer.colors.towerHeight(rate) };
   }
 
-  BTC.layout = { block: layoutBlock, stable: stableLayout, nominalTower };
+  Explorer.layout = { block: layoutBlock, stable: stableLayout, nominalTower };
 })();

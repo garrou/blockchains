@@ -1,7 +1,8 @@
 // Transaction models and calculations. Pure: no DOM, no network.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   /** Fee rate in sat/vB of a lightweight tx ({fee, vsize}); undefined when unknown. */
   const feeRate = (t) => (t && t.vsize && t.fee != null ? t.fee / t.vsize : undefined);
@@ -14,7 +15,7 @@
   }
 
   /** A block summary is complete when it has (almost) as many rows as the block has transactions. */
-  function isCompleteSummary(rows, expectedCount, minRatio = BTC.chain.config.summaryMinRatio) {
+  function isCompleteSummary(rows, expectedCount, minRatio = Explorer.chain.config.summaryMinRatio) {
     return Array.isArray(rows) && rows.length > 0 && rows.length >= (expectedCount || 0) * minRatio;
   }
 
@@ -47,5 +48,5 @@
   /** Fee rate in sat/vB of a full tx (weight / 4 = vsize). */
   const fullFeeRate = (tx) => (tx.fee != null && tx.weight ? tx.fee / (tx.weight / 4) : null);
 
-  BTC.txs = { feeRate, normalizeProjected, isCompleteSummary, fromSummary, provisional, inputTotal, outputTotal, fullFeeRate };
+  Explorer.bitcoin.txs = { feeRate, normalizeProjected, isCompleteSummary, fromSummary, provisional, inputTotal, outputTotal, fullFeeRate };
 })();

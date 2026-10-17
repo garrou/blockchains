@@ -2,8 +2,8 @@
 // the status pill.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const { $, el } = BTC.dom;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const { $, el } = Explorer.dom;
 
   const ORDER_KEY = 'layoutOrder', PLACEMENT_KEY = 'layoutPlacement';
 
@@ -23,7 +23,7 @@
 
   /** The fee scale legend: gradient and ticks come from the very stops the towers are colored with (the chain's rates). */
   function renderLegend() {
-    const C = BTC.colors, rates = BTC.chain.rates, label = rates.label ?? String, at = (r) => `${(C.position(r) * 100).toFixed(1)}%`;
+    const C = Explorer.colors, rates = Explorer.chain.rates, label = rates.label ?? String, at = (r) => `${(C.position(r) * 100).toFixed(1)}%`;
     const css = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
     $('#legend-bar').style.background = `linear-gradient(90deg, ${C.stops.map((s) => `${css(s.hex)} ${at(s.rate)}`).join(', ')})`;
     $('#legend-ticks').replaceChildren(...rates.ticks.map((r) =>
@@ -31,7 +31,7 @@
     $('#legend-max').textContent = `${label(C.MAX_RATE)}+ ${rates.unit}`; // the right end of the bar: this rate and above look the same
   }
 
-  BTC.ui.hud = {
+  Explorer.ui.hud = {
     /**
      * handlers: onFollow(bool), onOrder(mode), onPlacement(mode), onDetails().
      * Returns {order, placement}: the layout choices to start with (the remembered ones, if any).
@@ -55,12 +55,12 @@
     /** m: first projected block from the mempool (may be undefined). The sentence under the title is the chain's. */
     showNext(m) {
       $('#hud-title').textContent = 'Next block';
-      $('#hud-sub').textContent = BTC.chain.nextLine(m);
+      $('#hud-sub').textContent = Explorer.chain.nextLine(m);
       $('#hud-details').hidden = true;
     },
     showBlock(b) {
-      $('#hud-title').textContent = `Block #${BTC.chain.blockNumber(b)}`;
-      $('#hud-sub').textContent = BTC.chain.blockLine(b);
+      $('#hud-title').textContent = `Block #${Explorer.chain.blockNumber(b)}`;
+      $('#hud-sub').textContent = Explorer.chain.blockLine(b);
       $('#hud-details').hidden = false;
     },
   };

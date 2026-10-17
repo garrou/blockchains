@@ -3,12 +3,12 @@
 // isCurrent(token) before touching the screen. A slow, older response then never overwrites a newer one.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
 
   let seq = 0;
   /** Starts a request: returns its token. Any earlier request becomes stale. */
   const begin = () => ++seq;
   const isCurrent = (token) => token === seq;
 
-  BTC.requests = { begin, isCurrent };
+  Explorer.requests = { begin, isCurrent };
 })();

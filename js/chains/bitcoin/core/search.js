@@ -1,7 +1,8 @@
 // Classification of the search box input. Pure.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   /**
    * "765458"      -> {type: 'height', height}
@@ -14,10 +15,10 @@
     // a 64-digit string is a hash even if it only contains decimal digits: test it before the height
     if (/^[0-9a-fA-F]{64}$/.test(q)) return { type: 'hash', hash: q, blockFirst: q.startsWith('00000000') };
     if (/^\d+$/.test(q)) return { type: 'height', height: Number(q) };
-    const address = BTC.address.parse(q);
+    const address = Explorer.bitcoin.address.parse(q);
     if (address) return { type: 'address', address };
     return { type: 'invalid' };
   }
 
-  BTC.search = { classify };
+  Explorer.bitcoin.search = { classify };
 })();

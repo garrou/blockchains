@@ -1,15 +1,15 @@
-// What the node pushes (BTC.chain.live), over WebSocket: new blocks, and the transactions entering the mempool.
+// What the node pushes (Explorer.chain.live), over WebSocket: new blocks, and the transactions entering the mempool.
 //   newHeads                  a block was mined
 //   newPendingTransactions    a transaction entered the mempool (a hash; the page then asks for the transaction itself)
 // From the pending transactions the page keeps a pool (core/mempool.js) and guesses the next block (see projectNow).
 // If the WebSocket is down, new blocks are looked for by polling.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
-  const cfg = () => BTC.chain.config;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
+  const cfg = () => Explorer.chain.config;
 
-  const pool = E.mempool.create(BTC.chain.config.pool);
+  const pool = E.mempool.create(Explorer.chain.config.pool);
   let handlers = {};
   let connected = false;
   let heads = null, pendingSub = null;     // subscription ids
@@ -163,7 +163,7 @@
     pool, noteTip,
     connect(h) {
       handlers = h;
-      BTC.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose });
+      Explorer.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose });
       setInterval(fetchQueued, cfg().pending.tickMs);
       setInterval(projectNow, cfg().projectMs);
       setInterval(poll, cfg().pollMs);

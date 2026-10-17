@@ -1,12 +1,12 @@
-// What the node pushes (BTC.chain.live), over WebSocket: the slots. Each time a group of slots has started (and its first block is confirmed), the page
+// What the node pushes (Explorer.chain.live), over WebSocket: the slots. Each time a group of slots has started (and its first block is confirmed), the page
 // reads that block and tells the engine (a block "is mined" every `sample` slots, see core/blocks.js). Solana has no
 // mempool the page can read: there is no next block and no pending transaction.
 // If the WebSocket is down, the head slot is read by polling.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
-  const cfg = () => BTC.chain.config;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
+  const cfg = () => Explorer.chain.config;
 
   let handlers = {};
   let connected = false;
@@ -86,7 +86,7 @@
     noteTip,
     connect(h) {
       handlers = h;
-      BTC.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose });
+      Explorer.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose });
       setInterval(poll, cfg().pollMs);
     },
     trackNext() {}, // nothing to track: there is no next block

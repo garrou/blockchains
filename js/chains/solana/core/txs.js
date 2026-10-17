@@ -11,8 +11,8 @@
 // page of the transaction. The rate is exact, and it is the priority fee itself, not a price per unit, for the same reason.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
 
   const BASE_FEE = 5000; // lamports per signature
 
@@ -76,7 +76,7 @@
 
   /** One instruction in words: { program, action, text }. */
   function describeInstruction(ix) {
-    const f = BTC.format, x = S.format;
+    const f = Explorer.format, x = S.format;
     const short = (a) => f.short(a, 6, 4);
     const name = S.programs.nameOf(ix.programId) ?? ix.program ?? short(ix.programId ?? '?');
     if (ix.parsed && typeof ix.parsed === 'object') {

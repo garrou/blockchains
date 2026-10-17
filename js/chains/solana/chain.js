@@ -10,19 +10,19 @@
 //   next block   none: Solana has no mempool a page can read, so there is no "next" slot and no pending transaction
 // Like Ethereum, a plain node gives no per-transaction history for the 3D view to light up: there is no tracked address panel here.
 //
-// Loaded before the engine files that read BTC.chain at load time (core/colors.js).
+// Loaded before the engine files that read Explorer.chain at load time (core/colors.js).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
-  const F = () => BTC.format;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
+  const F = () => Explorer.format;
   const X = () => S.format;
 
-  BTC.defineChain({
+  Explorer.defineChain({
     id: 'solana',
     name: 'Solana',
 
-    // Constants only the Solana files read (BTC.chain.config.*)
+    // Constants only the Solana files read (Explorer.chain.config.*)
     config: {
       // public JSON-RPC nodes (HTTP) and their WebSockets, tried in this order; change them to use your own node
       rpc: ['https://solana-rpc.publicnode.com', 'https://api.mainnet-beta.solana.com'],
@@ -69,7 +69,7 @@
       fill: S.blocks.fill(b),
     }),
 
-    blockLine: (b) => `${F().number(b.tx_count)} transactions · block height ${b.blockHeight != null ? F().number(b.blockHeight) : '—'} · one block in ${BTC.chain.config.sample} slots · ${F().date(b.timestamp)}`,
+    blockLine: (b) => `${F().number(b.tx_count)} transactions · block height ${b.blockHeight != null ? F().number(b.blockHeight) : '—'} · one block in ${Explorer.chain.config.sample} slots · ${F().date(b.timestamp)}`,
 
     // t: a tower of the newest block (see core/txs.js)
     feedRow: (t) => ({
@@ -113,7 +113,7 @@
 
     start() {
       const d = S.details;
-      BTC.ui.detail.init({ onOpenTx: d.openTx, onOpenSlot: d.openSlot, onOpenAddress: d.openAddress });
+      Explorer.ui.detail.init({ onOpenTx: d.openTx, onOpenSlot: d.openSlot, onOpenAddress: d.openAddress });
       S.statsCtl.start();
     },
   });

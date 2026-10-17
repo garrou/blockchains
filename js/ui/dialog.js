@@ -2,8 +2,8 @@
 // "Loading…", messages. What goes inside is drawn by the chain (Bitcoin: chains/bitcoin/ui/detail.js).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const { $, el } = BTC.dom;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const { $, el } = Explorer.dom;
 
   const dialog = $('#detail');
   const body = $('#detail-body');
@@ -17,7 +17,7 @@
     }
   }
 
-  BTC.ui.dialog = {
+  Explorer.ui.dialog = {
     init() {
       $('#close').addEventListener('click', () => dialog.close());
       // Close on a click on the backdrop only (not on the dialog's own padding), and only if the press began there too: a

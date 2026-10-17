@@ -1,8 +1,8 @@
 // What the search box text means for Solana. Pure.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
 
   /**
    * -> { type: 'slot', slot } | { type: 'signature', signature } | { type: 'account', address } (any 32-byte key: a wallet, a

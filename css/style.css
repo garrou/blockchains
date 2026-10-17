@@ -5,7 +5,7 @@
   --text: #e6e8ef;
   --muted: #8a91a6;
   --accent: #f7931a;
-  /* the page sets it from BTC.chain.theme.accent (app.js) */
+  /* the page sets it from Explorer.chain.theme.accent (app.js) */
   --ok: #3ecf8e;
   --bad: #ef5b5b;
   --mine: #ff5cf0;

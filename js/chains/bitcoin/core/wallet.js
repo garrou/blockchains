@@ -1,7 +1,8 @@
 // The tracked wallet: how the transactions of an address are listed next to the 3D scene. Pure.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
 
   const PAGE = 25; // confirmed transactions per page of the address API
 
@@ -14,12 +15,12 @@
     const confirmed = !!st.confirmed;
     return {
       txid: tx.txid,
-      net: BTC.address.delta(tx, address),
+      net: Explorer.bitcoin.address.delta(tx, address),
       pending: !confirmed,
       hash: confirmed ? st.block_hash : null,
       height: confirmed ? st.block_height : null,
       time: confirmed ? st.block_time : null,
-      rate: BTC.txs.fullFeeRate(tx),
+      rate: Explorer.bitcoin.txs.fullFeeRate(tx),
     };
   }
 
@@ -61,5 +62,5 @@
   /** Whether older confirmed transactions exist beyond the ones loaded (confirmedTotal: tx_count of the address). */
   const hasOlder = (txs, confirmedTotal) => txs.filter((t) => t.status?.confirmed).length < confirmedTotal;
 
-  BTC.wallet = { PAGE, entry, entries, reach, merge, hasOlder };
+  Explorer.bitcoin.wallet = { PAGE, entry, entries, reach, merge, hasOlder };
 })();

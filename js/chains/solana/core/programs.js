@@ -3,8 +3,8 @@
 // so "likely": a transaction that names the Jupiter program is a swap, one that names only the token program a token transfer.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = (BTC.sol = BTC.sol || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = (Explorer.solana = Explorer.solana || {});
 
   const VOTE = 'Vote111111111111111111111111111111111111111';
   const SYSTEM = '11111111111111111111111111111111';

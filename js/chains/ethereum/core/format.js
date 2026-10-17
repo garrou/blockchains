@@ -2,8 +2,8 @@
 // Number holds exactly); prices are Numbers in gwei (1 gwei = 1e9 wei = 1e-9 ETH).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
 
   /** A "0x..." quantity (or a Number, or nothing) -> BigInt. */
   const big = (q) => {
@@ -47,7 +47,7 @@
   const weiToGwei = (wei) => Number(big(wei)) / 1e9;
 
   /** Gas: "21,000", and "12.3M" for millions. */
-  const gas = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 1 : 2)}M` : BTC.format.number(n));
+  const gas = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 1 : 2)}M` : Explorer.format.number(n));
 
   E.format = { big, units, eth, ethSigned, gwei, weiToGwei, gas };
 })();

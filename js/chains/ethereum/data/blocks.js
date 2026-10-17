@@ -1,9 +1,9 @@
-// What the engine asks the network for, in Ethereum words (BTC.chain.data): blocks, their transactions as towers.
+// What the engine asks the network for, in Ethereum words (Explorer.chain.data): blocks, their transactions as towers.
 // Reads the node through data/rpc.js. A mined block never changes: its contents are kept (a few dozen blocks).
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const E = (BTC.eth = BTC.eth || {});
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const E = (Explorer.ethereum = Explorer.ethereum || {});
 
   const hex = (n) => `0x${n.toString(16)}`;
 
@@ -21,7 +21,7 @@
     return blocks.filter(Boolean);
   }
 
-  const range = (top) => Array.from({ length: BTC.chain.config.pageSize }, (_, i) => top - i).filter((n) => n >= 0);
+  const range = (top) => Array.from({ length: Explorer.chain.config.pageSize }, (_, i) => top - i).filter((n) => n >= 0);
 
   async function latestBlocks() {
     const tip = Number(E.format.big(await E.rpc.call('eth_blockNumber')));
