@@ -1,14 +1,15 @@
 # Architecture
 
-The page is split in two:
+Each page is split in two:
 
 - the **engine**: everything that draws blocks and transactions in 3D, keeps the list of blocks, the feed and the camera.
   It knows nothing about any blockchain.
-- a **chain** (today: Bitcoin): one object that gives the engine its numbers, its words and its data.
-  Everything specific to a chain lives in `js/chains/<name>/`.
+- a **chain**: one object that gives the engine its numbers, its words and its data. Everything specific to a chain lives
+  in `js/chains/<name>/`. Three exist: Bitcoin (`index.html`), Ethereum (`ethereum.html`), Solana (`solana.html`).
 
 The engine talks to the chain only through `BTC.chain`. The contract is written (and validated at startup) in
-[`js/core/chain.js`](../js/core/chain.js). `node scripts/check-boundary.js` fails if an engine file names a Bitcoin module or unit.
+[`js/core/chain.js`](../js/core/chain.js). `node scripts/check-boundary.js` fails if an engine file names a Bitcoin,
+Ethereum or Solana module or unit.
 
 ## Where things are
 
@@ -20,14 +21,17 @@ js/
   scene/         the 3D view (Three.js): rendering only
   ui/            DOM views of the engine (block row, HUD, feed, dialog shell)
   controllers/   orchestration (navigation, scene-sync, feed, "latest request wins")
+  net/           JSON-RPC over HTTP and WebSocket (shared by the chains that speak it: nodes tried in turn, batches, reconnection)
   app.js         entry point: creates the views and the scene, connects the chain, wires everything
-  chains/bitcoin/
-    chain.js     the Bitcoin spec passed to BTC.defineChain: numbers, words, data, live, hooks
-    core/        pure Bitcoin logic (transactions, addresses, wallet history, statistics, search classification)
-    data/        mempool.space REST API and WebSocket
-    ui/          Bitcoin screens (detail dialog content, statistics bar, tracked-address panel)
-    controllers/ Bitcoin orchestration (detail requests, search, statistics, tracked address)
-css/  index.html
+  chains/<name>/ (bitcoin, ethereum, solana: the same four folders, each file is that chain's own)
+    chain.js     the spec passed to BTC.defineChain: numbers, words, data, live, hooks
+    core/        pure logic of the chain (transactions, addresses, search classification...), no DOM, no network
+    data/        where the data comes from (Bitcoin: mempool.space; Ethereum, Solana: a node, over JSON-RPC)
+    ui/          the chain's screens (detail dialog content, statistics bar)
+    controllers/ the chain's orchestration (detail requests, search, statistics; Bitcoin: tracked address)
+css/             style.css (shared), ethereum.css, solana.css
+index.html  ethereum.html  solana.html      one page per chain: same engine scripts, the chain's own scripts
+tests/           node tests/ethereum.test.js, node tests/solana.test.js: the pure logic of each chain
 ```
 
 All files are classic scripts sharing the global `BTC` (no modules, no build): the page works when double-clicked.
@@ -72,6 +76,34 @@ user: click a tower / block, "Block details", search box --> chain.openTx / open
 Provisional data: if a mined block's towers are not known precisely yet (`approx`), the engine draws what it has and asks
 `blockTowers` again later (`scene-sync.js`, retries).
 
+## The three chains
+
+| | Bitcoin | Ethereum | Solana |
+|---|---|---|---|
+| tower (a transaction) | footprint = size (vB), height & color = fee rate (sat/vB) | footprint = gas used, height & color = gas price (gwei) | footprint = compute units used, height & color = priority fee per unit (µlamports/CU) |
+| full block | 1 Mvb | the gas limit (60M) | compute units (60M) |
+| a block | every ~10 min | every 12 s | every 0.4 s: the page shows **one in 10** (a block every 4 s), see `core/blocks.js` |
+| next block | the mempool's projection, pushed by the server | a guess built from the pending transactions the page has seen (best tip first) | none: no mempool can be read (`nextBlock: false`) |
+| data | mempool.space REST + WebSocket | a node: JSON-RPC + WebSocket (`eth_subscribe`) | a node: JSON-RPC + WebSocket (`slotSubscribe`) |
+| accent | orange | Ethereum blue | Solana purple (the scale ends in the logo's green) |
+| address page | totals + transactions | balance, nonce, contract or wallet, token name, ENS | balance, owner program, token holdings, latest transactions |
+| tracked address in 3D ("Show in 3D") | yes | **no** | **no** |
+
+Why no tracked address on Ethereum and Solana. On Bitcoin the page lights up the towers of an address: it can, because the
+mempool.space API lists every transaction of an address. A plain Ethereum node cannot (it takes an indexer such as Etherscan,
+which needs a key). A Solana node does list the signatures of an address, but the page only draws one block in ten, so most of
+the transactions of an address would never be in a drawn block: lighting them up would show nothing.
+
+What is Ethereum-specific and worth knowing: the base fee of the next block is computed from the last block (EIP-1559, `core/blocks.js`);
+the gas a transaction really used comes from the receipts (`eth_getBlockReceipts`), estimated from the gas limits when a node
+lacks that call; the next block is only a guess since a public node announces the transactions it sees, not the whole mempool.
+
+What is Solana-specific: most transactions of a block are validators' votes (flat dark towers); the base fee is the same for
+everybody (5000 lamports per signature), so the height of a tower is the priority fee, what people bid to be first.
+
+Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit; use your own node by
+changing those lists.
+
 ## Adding a chain
 
 1. Create `js/chains/<name>/chain.js` calling `BTC.defineChain({...})`. The call lists every missing or mistyped field of
@@ -82,15 +114,23 @@ Provisional data: if a mined block's towers are not known precisely yet (`approx
 3. Write its words: `blockCard`, `nextCard`, `blockLine`, `nextLine`, `feedRow`, `describeTower`.
 4. Optionally provide hooks (`openTx`, `openBlock`, `search`, `onBlock`, `onVisible`, `onHighlight`, `start`) for its own
    detail screens, search and statistics. A chain without a hook simply has no such feature.
-5. Make a page: copy `index.html` and load the new chain's scripts instead of Bitcoin's. No build step: scripts only.
+5. Optionally state its look and shape: `theme.accent`, `rates.heightScale`, `rates.label`, `blockNumber`, and `nextBlock: false`
+   if there is no pending block to show (see the list of optional parts in `js/core/chain.js`).
+6. Make a page: copy `ethereum.html` (the simplest) and load the new chain's scripts instead. No build step: scripts only.
+   A chain that speaks JSON-RPC can use `BTC.jsonrpc.create` / `BTC.jsonrpc.socket` from `js/net/jsonrpc.js`.
+7. Test it: the pure logic with a node test as in `tests/`; the page against a mocked node (the nodes used above cannot be
+   called from a test: a fake one that answers the same JSON is enough to see every screen).
 
 ## Known limitations
 
 - **One chain per page.** `BTC.chain` is a single global; two chains in one page are not supported.
-- **Modules are not namespaced per chain.** Bitcoin registers `BTC.api`, `BTC.txs`, `BTC.wallet`...; a second chain's
-  page loads its own files instead, but two chains' files cannot be loaded together without renaming.
-- **Page chrome is still Bitcoin's.** Titles, the statistics bar and the labels in `index.html` are Bitcoin text; a new page
-  replaces them. The statistics bar and tracked-address panel markup belong to the Bitcoin chain's `ui/`.
+- **Modules are not all namespaced the same way.** Bitcoin registers `BTC.api`, `BTC.txs`, `BTC.wallet`...; Ethereum and Solana
+  keep theirs under `BTC.eth` and `BTC.sol`. Each page loads one chain's files only.
+- **Page chrome belongs to the page.** The titles, the statistics bar and the labels are in each chain's own `.html`.
+- **The chains' live data was written against mocked nodes.** The public nodes cannot be reached from the environment this was
+  built in: every screen and every flow was tested against a fake node that answers the standard JSON-RPC, not against the real
+  ones. If a public node answers differently (a call it does not offer, a stricter rate limit), the first symptom is a warning
+  in the console and a missing block or screen: see `data/` of the chain.
 - **Historical names.** In the tower model, `vsize` means "size in capacity units" and `rate` "price per unit";
   the names come from Bitcoin (virtual size, sat/vB) and were kept to avoid a risky mass rename.
 - **A chain with no proof-of-work** (Ethereum, Solana...) needs decisions the contract does not make for you: what a "block"

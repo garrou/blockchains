@@ -17,6 +17,7 @@ const FORBIDDEN = [
   [/sat\/vB|\bsats?\b|\bsatoshis?\b|\bvB\b/, 'a Bitcoin unit'],
   [/mempool\.space/, 'a Bitcoin endpoint'],
   [/\bBTC\.eth\b|\bgwei\b|\bwei\b|\bETH\b/, 'an Ethereum module or unit'],
+  [/\bBTC\.sol\b|lamports?\b|\bSOL\b/, 'a Solana module or unit'],
 ];
 
 function listFiles(dir) {
