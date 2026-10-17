@@ -624,7 +624,11 @@
         controls.target.x += dx; camera.position.x += dx;
         snapped = true;
       }
-      if (pending) { pick(pending); pending = null; }
+      if (pending) { // a chain's tooltip text that throws must not stop the frame (the pointer is dropped, not retried)
+        const e = pending;
+        pending = null;
+        try { pick(e); } catch (err) { console.warn('tooltip', err); hideTip(); }
+      }
       controls.update();
       composer ? composer.render() : renderer.render(scene, camera);
     })(last);
@@ -665,12 +669,12 @@
       setSummary(id, { fill, rate }) {
         const s = slots.get(id);
         if (!s || s.mesh) return;
-        const h = Math.max(0.8, Math.min(1, fill) * (FRAME_H - 2));
+        const h = Math.max(0.8, Math.min(1, Number.isFinite(fill) ? fill : 0) * (FRAME_H - 2));
         const key = `${h.toFixed(3)}|${rate ?? ''}`;
         if (s.lite && s.liteKey === key) return; // already showing this shape
         disposeLite(s);
         s.liteKey = key;
-        s.liteColor = colorOf(Explorer.colors.rate(rate ?? 2));
+        s.liteColor = colorOf(Explorer.colors.rate(rate ?? Explorer.chain.rates.min));
         const m = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({ color: s.liteColor.clone(), metalness: 0.35, roughness: 0.5, transparent: true, opacity: 0.85 }));
         m.scale.set(SIZE - 3, h, SIZE - 3);
         s.group.add(m); s.lite = m;

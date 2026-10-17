@@ -1,5 +1,5 @@
 // The tracked wallet: the transactions of one address, drawn in the 3D scene (their towers glow, a beacon rises from each)
-// and listed in a panel over it. The list is reloaded every few seconds and after every block, so a transaction that was
+// and listed in a panel over it. The list is reloaded every `wallet.pollMs` and after every block, so a transaction that was
 // just sent (or mined) shows up by itself.
 (() => {
   'use strict';
@@ -111,7 +111,7 @@
       console.warn('wallet older', e);
       if (state.wallet === w) w.failed = true;
     } finally {
-      if (state.wallet === w) { w.busy = false; apply(); }
+      if (state.wallet === w) { w.busy = false; apply(); schedule(C.pollMs); } // a refresh that came due during this request was skipped: start the countdown again
     }
   }
 

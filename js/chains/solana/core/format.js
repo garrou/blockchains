@@ -17,7 +17,7 @@
 
   const solSigned = (lamports, maxFrac = 6) => `${lamports < 0 ? '' : '+'}${sol(lamports, maxFrac)}`;
 
-  /** Price per compute unit in micro-lamports: "850", "12k", "3.4M". */
+  /** A priority fee in lamports, short: "850", "12k", "3.4M". */
   function price(r) {
     if (!Number.isFinite(r)) return '—';
     if (r < 1) return '0';

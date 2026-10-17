@@ -2,9 +2,10 @@
 //
 // How Ethereum maps to the engine's ideas:
 //   block        a block (a new one every 12 s)
-//   tower        a transaction: its footprint is the GAS it used, its height and color the GAS PRICE it paid (gwei)
+//   tower        a transaction: its footprint is the GAS it used (a pending one: its gas limit), its height and color the GAS PRICE it paid (gwei)
 //   full block   the block gas limit (capacity.size). Blocks are meant to be half full (the "target"): the base fee rises
-//                above it and falls below it, so a typical block covers half of its platform
+//                above it and falls below it, so a typical block covers half of its platform. Sizes are on the 60M scale for
+//                every block: an older block, whose limit was lower, covers less than its card says
 //   next block   a guess: the pending transactions this page has seen, best tip first, as many as fit (data/live.js)
 // There is no address history to show: a plain node does not index addresses (that takes an indexer), so unlike on Bitcoin
 // an address page shows its balance and nature, not its transactions.

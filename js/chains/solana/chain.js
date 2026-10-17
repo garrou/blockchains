@@ -4,11 +4,12 @@
 //   block        one block out of every `sample` slots. Solana makes a block every 0.4 s; showing them all is more data than a
 //                public node lets a browser read, so the page shows one in 10 (a block every 4 s). The number people know is the slot
 //   tower        a transaction: its footprint is its COMPUTE UNITS (estimated: the light read of a block does not give them, see
-//                core/txs.js), its height and color the PRIORITY FEE it paid, in lamports (exact). The base fee (5000 lamports per
+//                core/txs.js), its height and color the PRIORITY FEE it paid, in lamports (the fee minus the base fee; see core/txs.js). The base fee (5000 lamports per
 //                signature) is the same for everybody; the priority fee is what people bid to be first. Most of a block is
 //                validators' votes: flat, dark, and numerous
 //   next block   none: Solana has no mempool a page can read, so there is no "next" slot and no pending transaction
-// Like Ethereum, a plain node gives no per-transaction history for the 3D view to light up: there is no tracked address panel here.
+// There is no tracked address panel: the page draws one block in ten, so most transactions of an address would never be in a
+// drawn block (a node does list the signatures of an address, see docs/ARCHITECTURE.md).
 //
 // Loaded before the engine files that read Explorer.chain at load time (core/colors.js).
 (() => {

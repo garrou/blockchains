@@ -2,7 +2,7 @@
 // transactions as towers. Reads the node through data/rpc.js.
 //
 // Two reads of a block: only its signatures (light: gives the list of blocks and their number of transactions), and with the
-// `accounts` detail (heavy, a megabyte or more: fee, compute units and accounts of every transaction) for the blocks the scene draws.
+// `accounts` detail (heavy, a megabyte or more: fee, accounts and balances of every transaction; no compute units) for the blocks the scene draws.
 (() => {
   'use strict';
   const Explorer = (window.Explorer = window.Explorer || {});
@@ -17,9 +17,12 @@
     return err;
   }
 
+  /** A block of the page by its hash: the memory of blocks seen, then the lists the engine holds (they can be longer than the memory). */
+  const lookup = (id) => known.get(id) ?? [...Explorer.state.blocks, ...Explorer.state.liveBlocks].find((b) => b.id === id);
+
   const KNOWN_MAX = 600; // about 40 minutes of blocks: enough for the list and its history
   const remember = (blocks) => {
-    blocks.forEach((b) => known.set(b.id, b));
+    blocks.forEach((b) => { known.delete(b.id); known.set(b.id, b); }); // seen again: it becomes the newest entry
     while (known.size > KNOWN_MAX) known.delete(known.keys().next().value);
     return blocks;
   };
@@ -46,7 +49,7 @@
   }
 
   /** How far from the head a block is safely readable (produced, and confirmed by the node). */
-  const LAG = 3;
+  const LAG = 3; // also read by data/live.js
 
   async function latestBlocks() {
     const slot = Number(await S.rpc.call('getSlot', [{ commitment: 'confirmed' }]));
@@ -57,10 +60,14 @@
 
   const blocksFrom = (group) => groups(group, cfg().pageSize);
 
-  async function hashOf(group) { return (await groups(group, 1))[0].id; }
+  async function hashOf(group) {
+    const found = (await groups(group, 1)).find((b) => b.height === group);
+    if (!found) throw notFound('block'); // no block in that group (skipped slots)
+    return found.id;
+  }
 
   async function heightOf(hash) {
-    const b = known.get(hash);
+    const b = lookup(hash);
     if (!b) throw notFound('block');
     return b.height;
   }
@@ -95,7 +102,7 @@
       const raw = await S.rpc.block(slot, 'signatures');
       return raw ? S.blocks.normalize(slot, raw) : null;
     } catch (e) {
-      if (e.code === -32007 || e.code === -32009) return null; // skipped / missing
+      if (e.code === -32007 || e.code === -32009 || e.code === -32004 || e.code === -32001) return null; // skipped, missing, not available (yet), or older than the node keeps
       throw e;
     }
   }
@@ -107,17 +114,23 @@
     return slots.length ? slots[0] : null;
   }
 
-  /** The towers of a block: one per transaction, as large as the compute it used, as high as the priority fee it paid per unit. */
+  /** The towers of a block: one per transaction, as large as the compute it used, as high as the priority fee it paid. */
   async function blockTowers(b) {
     const { rows } = await rowsOf(b);
     return rows.map(S.txs.towerOf);
   }
 
   S.data = {
-    latestBlocks, blocksFrom, heightOf, hashOf, blockTowers, rowsOf, blockAt, shownSlot, notFound, known, remember,
+    latestBlocks, blocksFrom, heightOf, hashOf, blockTowers, rowsOf, blockAt, shownSlot, notFound, known, lookup, remember, LAG,
     /** The transactions (rows) of the newest block read in detail, or null. */
     latestRows: () => (latest ? latest.rows : null),
     // No mempool to read: the feed shows the transactions of the newest block read, non-votes first (see chain.js)
-    recentTxs: async () => (latest ? latest.rows.filter((r) => r.kind !== 'vote').slice(0, cfg().feedPerBlock).map(S.txs.feedItem) : []),
+    recentTxs: async () => {
+      if (!latest && !Explorer.sceneSync.active()) { // without 3D nothing else reads a block in detail: do it for the newest one
+        const newest = Explorer.nav.liveBlocks()[0];
+        if (newest) await rowsOf(newest).catch(() => null);
+      }
+      return latest ? latest.rows.filter((r) => r.kind !== 'vote').slice(0, cfg().feedPerBlock).map(S.txs.feedItem) : [];
+    },
   };
 })();

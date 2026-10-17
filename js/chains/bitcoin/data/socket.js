@@ -9,7 +9,14 @@
   const send = (obj) => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); };
 
   function open() {
-    ws = new WebSocket(Explorer.chain.config.ws);
+    try {
+      ws = new WebSocket(Explorer.chain.config.ws);
+    } catch (e) { // a bad URL, or ws:// on an https page: try again later, like after a lost connection
+      console.warn('socket', e);
+      handlers.onStatus?.(false);
+      setTimeout(open, Math.min(30000, 1000 * 2 ** retry++));
+      return;
+    }
     ws.onopen = () => {
       retry = 0;
       handlers.onStatus?.(true);

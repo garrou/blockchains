@@ -11,7 +11,7 @@
   const rgb = (hex) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
   const STOPS_RGB = STOPS.map(([rate, hex]) => [rate, rgb(hex)]);
 
-  /** Gradient color of a fee rate (sat/vB), brighter for higher rates. */
+  /** Gradient color of a rate (the chain's price per unit of size), brighter for higher rates. */
   function rate(r) {
     const v = Math.min(MAX_RATE, Math.max(MIN_RATE, r));
     let i = 0;

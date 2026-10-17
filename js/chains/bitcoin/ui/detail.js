@@ -82,7 +82,7 @@
           : 'Unconfirmed (mempool)'],
         ...(inTotal ? [['Total input', `${inTotal.partial ? '≥ ' : ''}${F.btc(inTotal.sum)}`]] : []),
         ['Total output', F.btc(Explorer.bitcoin.txs.outputTotal(tx))],
-        ['Fee', tx.fee != null ? `${F.number(tx.fee)} sats${rate != null ? ` (${rate.toFixed(1)} sat/vB)` : ''}` : '—'],
+        ['Fee', tx.vin?.[0]?.is_coinbase ? 'None (new coins)' : tx.fee != null ? `${F.number(tx.fee)} sats${rate != null ? ` (${rate.toFixed(1)} sat/vB)` : ''}` : '—'],
         ['Size', `${F.number(tx.size)} B · ${F.number(Math.ceil(tx.weight / 4))} vB`],
       ]), txCard(tx, false));
     },

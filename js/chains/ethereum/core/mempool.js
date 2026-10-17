@@ -40,7 +40,11 @@
       add(p) {
         if (byHash.has(p.hash)) return 'dup';
         const old = bySlot.get(slot(p));
-        if (old) remove(old);
+        if (old) {
+          const o = byHash.get(old);
+          if (p.maxFee <= o.maxFee && p.maxPriority <= o.maxPriority) return 'dup'; // not a bump: the older version of the transaction, announced late
+          remove(old);
+        }
         byHash.set(p.hash, p);
         bySlot.set(slot(p), p.hash);
         if (!bySender.has(p.from)) bySender.set(p.from, new Set());
@@ -49,6 +53,7 @@
           let worst = null;
           for (const q of byHash.values()) if (!worst || q.maxFee < worst.maxFee || (q.maxFee === worst.maxFee && q.seen < worst.seen)) worst = q;
           remove(worst.hash);
+          if (worst.hash === p.hash) return 'dup'; // the newcomer was the cheapest: it is not kept
         }
         return old ? 'replaced' : 'new';
       },

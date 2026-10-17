@@ -10,7 +10,7 @@
   const rotl = (x, n) => (n === 0 ? x : ((x << BigInt(n)) | (x >> BigInt(64 - n))) & MASK);
 
   // Round constants and rotation offsets, generated from their definition in the Keccak reference (a linear feedback
-  // shift register for the constants, a walk on the 5x5 grid for the offsets): checked against known hashes in the tests.
+  // shift register for the constants, a walk on the 5x5 grid for the offsets): checked once against known hashes (empty input, the ENS names).
   const RC = [];
   for (let round = 0; round < 24; round++) {
     let rc = 0n;

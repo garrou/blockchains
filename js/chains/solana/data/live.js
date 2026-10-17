@@ -15,7 +15,7 @@
   let busy = false;
   let lastBackfill = 0;
 
-  const LAG = 3; // slots to wait after the start of a group before reading its block: it has to be produced and confirmed
+  const LAG = S.data.LAG; // slots to wait after the start of a group before reading its block: it has to be produced and confirmed
 
   /** The newest block seen (from the list the engine loads): where the stream goes on from. */
   function noteTip(block, slot) {
@@ -41,7 +41,8 @@
         if (!raw) break;
         const block = S.blocks.normalize(slots[0], raw, last.id);
         S.data.remember([block]);
-        last = block;
+        if (block.height > last.height) last = block; // the list may have been reloaded (noteTip) while this block was read
+        else break;
         handlers.onBlock?.(block);
       }
     } catch (e) {
@@ -84,6 +85,7 @@
 
   S.live = {
     noteTip,
+    headSlot: () => latestSlot, // the newest slot heard of (the blocks shown are a few slots behind)
     connect(h) {
       handlers = h;
       Explorer.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose });

@@ -11,14 +11,14 @@
 
     return {
       /**
-       * Adds txs ({txid, fee?, vsize?, value?}); already seen ones are ignored.
+       * Adds txs ({txid, rate?, fee?, vsize?, value?}; without `rate` it is fee / vsize); already seen ones are ignored.
        * Returns the [{rate, vsize}] of the new txs for which `isAnimatedElsewhere(txid)` is false (they fall toward the block).
        */
       push(list, isAnimatedElsewhere = () => false, now = Date.now()) {
         const stream = [];
         for (const t of list) {
           if (!t || !t.txid || seen.has(t.txid)) continue;
-          if (!isAnimatedElsewhere(t.txid)) stream.push({ rate: t.vsize && t.fee != null ? t.fee / t.vsize : undefined, vsize: t.vsize }); // price per unit of size
+          if (!isAnimatedElsewhere(t.txid)) stream.push({ rate: t.rate ?? (t.vsize && t.fee != null ? t.fee / t.vsize : undefined), vsize: t.vsize }); // price per unit of size
           seen.add(t.txid);
           total++;
           stamps.push(now);

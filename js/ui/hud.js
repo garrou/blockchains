@@ -40,11 +40,17 @@
       renderLegend();
       const order = rememberedSelect('#order', ORDER_KEY, handlers.onOrder);
       const placement = rememberedSelect('#placement', PLACEMENT_KEY, handlers.onPlacement);
+      $('#follow').checked = Explorer.state.follow; // a browser may restore the checkbox of the previous visit
       $('#follow').addEventListener('change', (e) => handlers.onFollow(e.target.checked));
       $('#hud-details').addEventListener('click', () => handlers.onDetails());
       return { order, placement };
     },
-    hideStage() { $('.stage').hidden = true; },
+    /** No 3D view: hides it, with the reason (nothing else says why the page has no scene). */
+    hideStage(reason) {
+      const stage = $('.stage');
+      stage.hidden = true;
+      if (reason) stage.before(Explorer.dom.el('p', { class: 'no3d' }, `3D view off: ${reason}`));
+    },
     setFollow(on) { $('#follow').checked = on; },
     setMessage(text) { $('#scene-msg').textContent = text; },
     setStatus(online) {

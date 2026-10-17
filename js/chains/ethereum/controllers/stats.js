@@ -13,9 +13,9 @@
 
   const sum = (list, f) => list.reduce((s, b) => s + f(b), 0);
 
-  /** Redraws the bar from the blocks in the state and the guess of the next block. */
+  /** Redraws the bar from the latest blocks and the guess of the next block. */
   function refresh() {
-    const blocks = Explorer.state.blocks.slice(0, WINDOW);
+    const blocks = Explorer.nav.liveBlocks().slice(0, WINDOW); // the latest blocks, even while the view shows an old searched block
     const last = blocks[0];
     if (!last) return;
     const x = X();

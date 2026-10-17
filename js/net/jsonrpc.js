@@ -23,6 +23,7 @@
           const res = await fetch(list[i], { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
           if (!res.ok) { const err = new Error(`${res.status} ${list[i]}`); err.status = res.status; throw err; }
           const json = await res.json();
+          if (json == null || typeof json !== 'object') throw new Error(`not JSON-RPC ${list[i]}`);
           current = i;
           return json;
         } catch (e) { last = e; } finally { clearTimeout(timer); }
@@ -48,11 +49,19 @@
      * Several calls in one HTTP request: -> an array, in the same order, holding each result or, for a call that failed,
      * an Error (one failure does not lose the others). A node that refuses batches gets the calls one by one.
      */
+    const REFUSES_BATCHES = new Set([400, 403, 405, 413, 501]); // HTTP statuses of a node that does not take a batch (not 429: one by one would only add load)
     async function batch(calls) {
       if (!calls.length) return [];
       const ids = calls.map(() => nextId++);
-      const json = await post(calls.map(([method, params], i) => ({ jsonrpc: '2.0', id: ids[i], method, params: params ?? [] })));
-      if (!Array.isArray(json)) return Promise.all(calls.map(([method, params]) => call(method, params).catch((e) => e))); // refused as a whole
+      const one = () => Promise.all(calls.map(([method, params]) => call(method, params).catch((e) => e)));
+      let json;
+      try {
+        json = await post(calls.map(([method, params], i) => ({ jsonrpc: '2.0', id: ids[i], method, params: params ?? [] })));
+      } catch (e) {
+        if (calls.length > 1 && REFUSES_BATCHES.has(e.status)) return one(); // refused as a whole, with an HTTP error
+        throw e;
+      }
+      if (!Array.isArray(json)) return one(); // refused as a whole, with a JSON-RPC error
       const byId = new Map(json.map((r) => [r.id, r]));
       return ids.map((id) => {
         const r = byId.get(id);
@@ -73,33 +82,51 @@
    * Returns ctl = { send(obj), ready(), close() }.
    */
   function socket({ urls, staleMs = 0, onOpen, onMessage, onClose }) {
-    let ws = null, index = 0, retry = 0, watchdog = 0;
+    let ws = null, index = 0, retry = 0, watchdog = 0, timer = 0;
     const heard = () => { // the connection is alive: the countdown starts again
       clearTimeout(watchdog);
-      if (staleMs) watchdog = setTimeout(() => { if (ws) ws.close(); }, staleMs);
+      if (staleMs) watchdog = setTimeout(drop, staleMs);
     };
+    /** Replaces a connection that went silent: a dead link may never finish a closing handshake, so it is not waited for. */
+    function drop() {
+      const old = ws;
+      if (old) {
+        old.onopen = old.onmessage = old.onclose = old.onerror = null;
+        try { old.close(); } catch { /* already closed */ }
+      }
+      lost();
+    }
+    /** The connection is gone (closed, failed to open, or dropped): tell the chain, try the next node later. */
+    function lost() {
+      clearTimeout(watchdog);
+      ws = null;
+      try { onClose(); } catch (e) { console.warn('socket onClose', e); } // the reconnection must not depend on the chain's handler
+      index++; // the next node, in case this one is the problem
+      clearTimeout(timer);
+      timer = setTimeout(open, Math.min(30000, 1000 * 2 ** retry++));
+    }
     const ctl = {
       send(obj) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); },
       ready() { retry = 0; },
       close() { if (ws) ws.close(); },
     };
     function open() {
-      const list = urls();
-      ws = new WebSocket(list[index % list.length]);
-      ws.onopen = () => { heard(); onOpen(ctl.send, ctl); };
-      ws.onmessage = (ev) => {
+      clearTimeout(timer);
+      let sock;
+      try {
+        const list = urls();
+        sock = new WebSocket(list[index % list.length]); // throws on a bad URL, or a ws:// URL on an https page
+      } catch (e) { console.warn('socket', e); lost(); return; }
+      ws = sock;
+      sock.onopen = () => { heard(); onOpen(ctl.send, ctl); };
+      sock.onmessage = (ev) => {
         heard();
         let msg;
         try { msg = JSON.parse(ev.data); } catch { return; } // ignore malformed frames
         onMessage(msg, ctl);
       };
-      ws.onclose = () => {
-        clearTimeout(watchdog);
-        onClose();
-        index++; // the next node, in case this one is the problem
-        setTimeout(open, Math.min(30000, 1000 * 2 ** retry++));
-      };
-      ws.onerror = () => ws.close();
+      sock.onclose = () => { if (ws === sock) lost(); };
+      sock.onerror = () => sock.close();
     }
     open();
     return ctl;

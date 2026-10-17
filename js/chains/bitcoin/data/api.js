@@ -6,7 +6,10 @@
 
   /** GET a path of the API. Rejects with an Error carrying `.status` (HTTP status) when the response is not ok. */
   async function get(path) {
-    const res = await fetch(Explorer.chain.config.api + path);
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), Explorer.chain.config.apiTimeoutMs);
+    let res;
+    try { res = await fetch(Explorer.chain.config.api + path, { signal: ctl.signal }); } finally { clearTimeout(timer); } // the body is read after: it is quick once the headers are here
     if (!res.ok) {
       const err = new Error(`${res.status} ${path}`);
       err.status = res.status;

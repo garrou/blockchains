@@ -54,15 +54,16 @@
     if (!full) throw notFound('block');
     const block = E.blocks.normalize(full);
     const byHash = Array.isArray(receipts) ? new Map(receipts.map((r) => [r.transactionHash, r])) : null;
-    let rows;
+    let rows, estimated = false;
     if (byHash && full.transactions.every((tx) => byHash.has(tx.hash))) {
       rows = full.transactions.map((tx) => E.txs.row(tx, byHash.get(tx.hash), block));
     } else {
+      estimated = true;
       // a node without eth_getBlockReceipts: the gas used by each transaction is estimated from its gas limit
       console.warn('block receipts unavailable, gas used is estimated', receipts instanceof Error ? receipts.message : '');
       rows = E.txs.estimateGas(full.transactions.map((tx) => E.txs.row(tx, null, block)), block.gasUsed);
     }
-    return { block, rows };
+    return { block, rows, estimated };
   }
 
   /** The block (normalized) and its transactions (rows, in block order). b: anything with an `id` (the hash). Cached. */
@@ -70,7 +71,8 @@
     let p = cache.get(b.id);
     if (p) { cache.delete(b.id); cache.set(b.id, p); return p; }
     p = load(b.id);
-    p.catch(() => { if (cache.get(b.id) === p) cache.delete(b.id); });
+    const forget = () => { if (cache.get(b.id) === p) cache.delete(b.id); };
+    p.then((res) => { if (res.estimated) forget(); }, forget); // gas estimated without the receipts is not kept: the next read asks the node again
     cache.set(b.id, p);
     while (cache.size > KEEP) cache.delete(cache.keys().next().value);
     return p;
@@ -78,8 +80,10 @@
 
   /** The towers of a mined block: one per transaction, as large as the gas it used, as high as the gas price it paid. */
   async function blockTowers(b) {
-    const { rows } = await rowsOf(b);
-    return rows.map(E.txs.towerOf);
+    const { rows, estimated } = await rowsOf(b);
+    const towers = rows.map(E.txs.towerOf);
+    if (estimated) towers.approx = true; // sizes are gas limits, not gas used: the engine asks again later (the node may have the receipts by then)
+    return towers;
   }
 
   E.data = {

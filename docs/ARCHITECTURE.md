@@ -53,7 +53,7 @@ You do not need to know Three.js to read the engine; these are the ideas.
   platform); its **height and color** come from its rate (price per unit of size), through the color scale of `chain.rates`.
   The coinbase (block reward) is drawn gold, in the corner.
 - **Treemap** (`core/treemap.js`): the algorithm that decides which rectangle of the platform each tower gets, so that
-  areas are proportional to sizes. Pure math, unit-tested. The **next block** uses an incremental variant so that towers
+  areas are proportional to sizes. Pure math. The **next block** uses an incremental variant so that towers
   stay where they are while newcomers take free room ("Stable" placement); "Compact" lays it out again each time.
 - **InstancedMesh**: how thousands of towers are drawn cheaply, as one object with one position/color per tower.
   Only `scene/scene3d.js` knows about it.
@@ -103,7 +103,7 @@ the gas a transaction really used comes from the receipts (`eth_getBlockReceipts
 lacks that call; the next block is only a guess since a public node announces the transactions it sees, not the whole mempool.
 
 What is Solana-specific: most transactions of a block are validators' votes (flat dark towers); the base fee is the same for
-everybody (5000 lamports per signature), so the height of a tower is the priority fee, what people bid to be first (exact).
+everybody (5000 lamports per signature), so the height of a tower is the priority fee, what people bid to be first (the fee paid minus 5000 per signature: a transaction that verifies signatures with a precompile program pays more, and shows a small false priority).
 The footprint is an estimate: the light read of a block (`accounts` detail) gives fee, accounts and balances but not the compute
 units each transaction used (only the full read does, several times heavier), so they are guessed from the accounts a transaction
 touches (`estimateCU` in `core/txs.js`). The real figure is on the page of the transaction.

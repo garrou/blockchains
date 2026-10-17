@@ -19,6 +19,8 @@
   let packedIds = null;                    // ids of the towers of the last projection sent
   let needSnapshot = true, dirty = false;
   let blockChain = Promise.resolve();      // blocks are handled one after the other, in order
+  const mined = new Set();                 // hashes of the transactions of the latest blocks: one announced or fetched late is not pending any more
+  let fetching = false;                    // a batch of pending transactions is being fetched
 
   // ----- blocks -----
 
@@ -41,11 +43,16 @@
       try {
         const { block, rows } = await E.data.rowsOf({ id: head.hash });
         if (block.height >= tipHeight) pool.dropMined(rows);
+        rows.forEach((r) => mined.add(r.hash));
+        if (mined.size > 6000) for (const h of [...mined].slice(0, mined.size - 4000)) mined.delete(h); // about 30 blocks
         noteTip(block);
         needSnapshot = true;
         handlers.onBlock?.(block);
       } catch (e) {
         console.warn('new block', e);
+        pool.clear(); // what this block mined cannot be told apart from what still waits: the pool fills up again
+        needSnapshot = true;
+        dirty = true;
         setTimeout(() => handlers.onOpen?.(), 2000); // let the engine backfill the list
       }
     });
@@ -54,7 +61,8 @@
   // ----- pending transactions -----
 
   function ingest(tx) {
-    if (!tx || !tx.hash || tx.blockNumber) return; // already mined
+    if (!tx || !tx.hash || tx.blockNumber || mined.has(tx.hash)) return; // already mined
+    if (!tipHeight) return; // no block seen yet: the base fee is unknown, a price would be the maximum fee, not what it would pay
     const p = E.txs.pending(tx);
     if (pool.add(p) === 'dup') return;
     feedBatch.push(E.txs.feedItem(p, pool.base()));
@@ -63,18 +71,20 @@
 
   function onAnnounced(result) {
     if (typeof result === 'string') {
-      if (!pool.has(result)) queued.add(result);
+      if (!pool.has(result) && !mined.has(result)) queued.add(result);
       if (queued.size > 1000) for (const h of [...queued].slice(0, 500)) queued.delete(h); // overloaded: keep the newest
     } else ingest(result); // a node that sends the whole transaction
   }
 
   async function fetchQueued() {
     const take = Math.max(1, Math.round((cfg().pending.fetchPerSec * cfg().pending.tickMs) / 1000));
-    const hashes = [...queued].slice(-take); // the newest
+    const hashes = fetching ? [] : [...queued].slice(-take); // the newest; none while the previous batch is still out (a slow node must not pile up requests)
     hashes.forEach((h) => queued.delete(h));
     if (hashes.length) {
+      fetching = true;
       try { (await E.rpc.batch(hashes.map((h) => ['eth_getTransactionByHash', [h]]))).forEach((tx) => { if (tx && !(tx instanceof Error)) ingest(tx); }); }
       catch (e) { console.warn('pending transactions', e); }
+      finally { fetching = false; }
     }
     if (feedBatch.length) { const out = feedBatch; feedBatch = []; handlers.onTransactions?.(out); }
   }

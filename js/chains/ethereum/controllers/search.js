@@ -19,7 +19,12 @@
         catch (e) { throw e.status === 404 ? new Error('no block or transaction with this hash') : e; }
       }
       if (q.type === 'address') return await E.details.openAddress(q.address, null, q.checksumOk);
-      if (q.type === 'name') return await E.details.openName(q.name);
+      if (q.type === 'name') {
+        const address = await E.details.resolveName(q.name);
+        if (!Explorer.requests.isCurrent(token)) return; // a newer search took over while the name was being resolved
+        if (!address) throw new Error(`"${q.name}" does not resolve to an address`);
+        return await E.details.openAddress(address, q.name);
+      }
       Explorer.ui.detail.message('Not recognized: enter a block number, a block or transaction hash (0x…), an address or a .eth name.');
     } catch (e) {
       if (Explorer.requests.isCurrent(token)) Explorer.ui.detail.message(`Not found (${e.message})`);

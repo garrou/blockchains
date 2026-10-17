@@ -19,19 +19,26 @@
   /** Reads name(), symbol() and decimals() of these contracts (one request). A contract that is not a token just gives nulls. */
   async function tokenInfo(addresses) {
     const todo = [...new Set(addresses)].filter((a) => !tokenCache.has(a));
+    const results = new Map(addresses.filter((a) => tokenCache.has(a)).map((a) => [a, tokenCache.get(a)]));
     if (todo.length) {
       const S = E.abi.SEL;
       const calls = todo.flatMap((to) => [S.name, S.symbol, S.decimals].map((data) => ['eth_call', [{ to, data }, 'latest']]));
       const res = await rpc().batch(calls).catch(() => []);
       todo.forEach((a, i) => {
-        const [name, symbol, decimals] = res.slice(i * 3, i * 3 + 3).map((r) => (r instanceof Error ? null : r));
-        tokenCache.set(a, {
+        const answers = res.slice(i * 3, i * 3 + 3);
+        const [name, symbol, decimals] = answers.map((r) => (r instanceof Error ? null : r));
+        const dec = decimals && decimals !== '0x' ? Number(E.abi.uint(decimals)) : null;
+        const info = {
           name: E.abi.decodeText(name), symbol: E.abi.decodeText(symbol),
-          decimals: decimals && decimals !== '0x' ? Number(E.abi.uint(decimals)) : null,
-        });
+          decimals: dec != null && Number.isInteger(dec) && dec <= 77 ? dec : null, // a hostile contract may answer anything
+        };
+        // a call that failed (rate limit, timeout) is not remembered as "not a token": only real answers (even reverts) are
+        const failed = answers.length < 3 || answers.some((r) => r instanceof Error && !r.rpc);
+        if (failed) tokenCache.delete(a); else tokenCache.set(a, info);
+        results.set(a, info);
       });
     }
-    return new Map(addresses.map((a) => [a, tokenCache.get(a)]));
+    return new Map(addresses.map((a) => [a, results.get(a)]));
   }
 
   async function openTx(hash) {
@@ -49,7 +56,7 @@
       if (!wanted(token)) return;
       Explorer.ui.detail.tx({ r: E.txs.row(tx, rec, block), tx, receipt: rec, block, transfers: shown, moreTransfers: all.length > shown.length, tokens });
     } catch (e) {
-      if (wanted(token)) Explorer.ui.detail.message(e.status === 404 ? 'Transaction not found.' : `Transaction not found (${e.message})`);
+      if (wanted(token)) Explorer.ui.detail.message(e.status === 404 ? 'Transaction not found.' : `Could not load the transaction (${e.message})`);
     }
   }
 
@@ -61,7 +68,7 @@
       if (!wanted(token)) return;
       Explorer.ui.detail.block({ block, rows: rows.slice(0, 25) });
     } catch (e) {
-      if (wanted(token)) Explorer.ui.detail.message(`Block not found (${e.message})`);
+      if (wanted(token)) Explorer.ui.detail.message(e.status === 404 ? 'Block not found.' : `Could not load the block (${e.message})`);
     }
   }
 
@@ -75,10 +82,11 @@
         ['eth_getBalance', [address, 'latest']], ['eth_getTransactionCount', [address, 'latest']], ['eth_getCode', [address, 'latest']],
       ])).map(must);
       const codeSize = code && code !== '0x' ? (code.length - 2) / 2 : 0;
-      const tokenOf = codeSize ? (await tokenInfo([address]).catch(() => new Map())).get(address) : null;
+      const delegate = codeSize === 23 && code.startsWith('0xef0100') ? `0x${code.slice(8)}` : null; // EIP-7702: a wallet that delegates to a contract
+      const tokenOf = codeSize && !delegate ? (await tokenInfo([address]).catch(() => new Map())).get(address) : null;
       if (!wanted(token)) return;
       Explorer.ui.detail.address({
-        address, ens, balance: E.format.big(balance), nonce: Number(E.format.big(nonce)), codeSize,
+        address, ens, balance: E.format.big(balance), nonce: Number(E.format.big(nonce)), codeSize: delegate ? 0 : codeSize, delegate,
         token: tokenOf && (tokenOf.symbol || tokenOf.name) ? tokenOf : null,
         pending: E.live.pool.involving(address), checksumOk,
       });
@@ -97,11 +105,5 @@
     return E.abi.addressOf(await rpc().call('eth_call', [{ to: resolver, data: E.abi.SEL.addr + node.slice(2) }, 'latest']));
   }
 
-  async function openName(name) {
-    const address = await resolveName(name);
-    if (!address) throw new Error(`"${name}" does not resolve to an address`);
-    return openAddress(address, name);
-  }
-
-  E.details = { openTx, openBlock, openAddress, openName, resolveName, tokenInfo };
+  E.details = { openTx, openBlock, openAddress, resolveName, tokenInfo };
 })();

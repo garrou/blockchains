@@ -8,7 +8,9 @@
 // The fee, the accounts and the balances come with the light read of a block (`accounts` detail), the compute units a
 // transaction really used do NOT (only the full read has them, several times heavier: not affordable for every block). So the
 // footprint of a tower is an ESTIMATE of its compute units from what it touches (see estimateCU); the real figure is on the
-// page of the transaction. The rate is exact, and it is the priority fee itself, not a price per unit, for the same reason.
+// page of the transaction. The rate is the fee paid minus 5000 per signature, and it is the priority fee itself, not a price per unit, for the same
+// reason. It counts a signature verified by a precompile program (ed25519, secp256k1...) as priority: those cost 5000 too, and the
+// light read does not show the instructions.
 (() => {
   'use strict';
   const Explorer = (window.Explorer = window.Explorer || {});
@@ -29,7 +31,7 @@
    * not know yet: one odd transaction must not take the whole block with it).
    */
   function row(entry, index = null) {
-    const tx = entry && entry.transaction, meta = entry.meta ?? {};
+    const tx = entry && entry.transaction, meta = entry?.meta ?? {};
     const rawKeys = tx && (tx.accountKeys ?? tx.message?.accountKeys);
     if (!tx || !Array.isArray(tx.signatures) || !tx.signatures.length || !Array.isArray(rawKeys) || !rawKeys.length) return null;
     const keys = rawKeys.map((k) => (typeof k === 'string' ? k : k.pubkey));
@@ -77,7 +79,7 @@
   /** One instruction in words: { program, action, text }. */
   function describeInstruction(ix) {
     const f = Explorer.format, x = S.format;
-    const short = (a) => f.short(a, 6, 4);
+    const short = (a) => (typeof a === 'string' ? f.short(a, 6, 4) : '?'); // not every instruction shape has every account (burnChecked has no source...)
     const name = S.programs.nameOf(ix.programId) ?? ix.program ?? short(ix.programId ?? '?');
     if (ix.parsed && typeof ix.parsed === 'object') {
       const { type, info = {} } = ix.parsed;

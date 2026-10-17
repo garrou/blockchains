@@ -72,6 +72,7 @@
       state.blocks = Explorer.blocks.merge([], list);
       renderRow();
       sync().sync();
+      if (state.tip > Explorer.blocks.tipOf(state.blocks)) loadBlocks(); // a block was mined while the list was loading
     }
     sync().publishNow();
     const target = thenFocus ?? state.blocks[0]?.id;
@@ -98,7 +99,10 @@
     state.tip = Math.max(state.tip, b.height);
     if (!state.detached && state.blocks.some((x) => x.id === b.id)) return;
     sync().resetProjection(); // the next block is recomputed, whatever we are looking at
-    if (state.detached) return; // browsing a searched block: the live list is reloaded when coming back
+    if (state.detached) { // browsing a searched block: the live list is reloaded when coming back; meanwhile it is only kept for the statistics
+      state.liveBlocks = Explorer.blocks.merge(state.liveBlocks, [b]);
+      return;
+    }
     state.blocks = Explorer.blocks.merge(state.blocks, [b]);
     renderRow(b.id);
     // the new block must sit on the block we have just below it; if not (a missed block, a deeper reorganization),
@@ -114,7 +118,7 @@
   async function refreshBlocks() {
     const list = await Explorer.chain.data.latestBlocks();
     state.tip = Math.max(state.tip, Explorer.blocks.tipOf(list));
-    if (state.detached) return; // the live list is rebuilt when coming back
+    if (state.detached) { state.liveBlocks = Explorer.blocks.merge(state.liveBlocks, list); return; } // the live list is rebuilt when coming back
     const merged = Explorer.blocks.merge(state.blocks, list);
     if (Explorer.blocks.sameList(merged, state.blocks)) return; // nothing new
     const first = !state.blocks.length;
@@ -171,17 +175,24 @@
     if (!sync().active()) { // no 3D: open the details, after checking the block exists (a 404 lets the search try a tx instead)
       const hash = query.hash ?? await Explorer.chain.data.hashOf(query.height);
       await Explorer.chain.data.heightOf(hash);
+      if (!Explorer.requests.isCurrent(token)) return; // a newer search took over while we were waiting
       return Explorer.chain.openBlock(hash);
     }
     const height = query.height ?? await Explorer.chain.data.heightOf(query.hash);
     if (!Explorer.requests.isCurrent(token)) return;
     if (state.tip && height > state.tip) throw new Error('height above the latest block');
+    // a searched hash must be the block the list holds at that height: an orphaned block still has a height, but it is not what is drawn there
+    const sameBlock = (b) => !query.hash || String(b.id).toLowerCase() === String(query.hash).toLowerCase();
+    const orphan = () => new Error('this block is no longer on the main chain (another one took its height)');
     let target = state.blocks.find((b) => b.height === height);
+    if (target && !sameBlock(target)) throw orphan();
     if (!target) {
       const list = await Explorer.chain.data.blocksFrom(Math.min(height + 2, state.tip || height + 2)); // 2 newer blocks + the target + older ones
       if (!Explorer.requests.isCurrent(token)) return;
       target = list.find((b) => b.height === height);
       if (!target) throw new Error('no block at this height');
+      if (!sameBlock(target)) throw orphan();
+      if (!state.detached) state.liveBlocks = state.blocks; // the live list stays available for the statistics
       state.detached = true;
       state.blocks = list;
       renderRow();
@@ -191,5 +202,8 @@
     focus(target.id); // manual choice: turns "follow" off and moves the camera (the 3D window slides with it)
   }
 
-  Explorer.nav = { focus, onFollow, addBlock, refreshBlocks, loadBlocks, loadOlder, goToBlock, refreshHud };
+  /** The latest blocks, newest first: the live list even while the view is detached on a searched block. */
+  const liveBlocks = () => (state.detached ? state.liveBlocks : state.blocks);
+
+  Explorer.nav = { focus, onFollow, addBlock, refreshBlocks, loadBlocks, loadOlder, goToBlock, refreshHud, liveBlocks };
 })();

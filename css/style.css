@@ -444,6 +444,12 @@ dd {
   display: none !important;
 }
 
+.no3d {
+  margin: 0 0 12px;
+  color: var(--muted, #8b93a7);
+  font-size: 13px;
+}
+
 .stage {
   position: relative;
   height: clamp(380px, 64vh, 660px);

@@ -20,7 +20,7 @@
       if (!wanted(token)) return;
       Explorer.ui.detail.tx({ signature, tx, slot: tx.slot, blockTime: tx.blockTime });
     } catch (e) {
-      if (wanted(token)) Explorer.ui.detail.message(e.status === 404 ? 'Transaction not found (the node keeps recent history only).' : `Transaction not found (${e.message})`);
+      if (wanted(token)) Explorer.ui.detail.message(e.status === 404 ? 'Transaction not found (the node keeps recent history only).' : `Could not load the transaction (${e.message})`);
     }
   }
 
@@ -29,13 +29,13 @@
     const token = begin();
     Explorer.ui.detail.loading();
     try {
-      const b = S.data.known.get(id);
+      const b = S.data.lookup(id);
       if (!b) throw S.data.notFound('block');
       const { rows } = await S.data.rowsOf(b);
       if (!wanted(token)) return;
       Explorer.ui.detail.block({ block: b, rows });
     } catch (e) {
-      if (wanted(token)) Explorer.ui.detail.message(`Block not found (${e.message})`);
+      if (wanted(token)) Explorer.ui.detail.message(e.status === 404 ? 'Block not found.' : `Could not load the block (${e.message})`);
     }
   }
 

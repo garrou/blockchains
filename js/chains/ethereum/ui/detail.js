@@ -25,7 +25,9 @@
   }
 
   const blockLink = (b) => link(`#${F.number(b.height)}`, () => handlers.onOpenBlock(b.id));
-  const statusPill = (ok) => el('span', { class: `eth-status ${ok ? 'ok' : 'bad'}` }, ok ? 'Success' : 'Failed (reverted)');
+  const statusPill = (ok) => (ok == null
+    ? el('span', { class: 'eth-status wait' }, 'Included') // a receipt from before the status field existed (2017): success is not told
+    : el('span', { class: `eth-status ${ok ? 'ok' : 'bad'}` }, ok ? 'Success' : 'Failed (reverted)'));
 
   /** The amount a token movement carries, with the token's symbol and decimals when we could read them. */
   function tokenAmount(t, tokens) {
@@ -114,7 +116,7 @@
     },
 
     /**
-     * v: { address, balance (wei), nonce, codeSize, token: { name, symbol, decimals }|null, ens: name|null,
+     * v: { address, balance (wei), nonce, codeSize, delegate (EIP-7702: the contract a wallet delegates to)|null, token: { name, symbol, decimals }|null, ens: name|null,
      *      pending: pool entries, checksumOk }
      */
     address(v) {
@@ -125,6 +127,7 @@
         E.address.nameOf(v.address) ? ['Known as', E.address.nameOf(v.address)] : null,
         ['Balance', x.eth(v.balance, 9)],
         ['Type', v.codeSize ? `Contract (${F.number(v.codeSize)} bytes of code)` : 'Externally owned account (a wallet)'],
+        v.delegate ? ['Delegates to', addr(v.delegate)] : null,
         v.token ? ['Token', `${v.token.name ?? '?'}${v.token.symbol ? ` (${v.token.symbol})` : ''}${v.token.decimals != null ? ` · ${v.token.decimals} decimals` : ''}`] : null,
         ['Transactions sent', F.number(v.nonce)],
       ]),

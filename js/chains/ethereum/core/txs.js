@@ -91,7 +91,7 @@
       priceWei,
       price: weiToGwei(priceWei),
       maxFee: big(tx.maxFeePerGas ?? tx.gasPrice),
-      ok: receipt ? big(receipt.status) === 1n : null,
+      ok: receipt && receipt.status != null ? big(receipt.status) === 1n : null, // no status in a receipt before Byzantium (block 4,370,000)
       created: receipt?.contractAddress ?? null,
       selector,
       kind,

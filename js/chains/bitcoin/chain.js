@@ -32,6 +32,7 @@
     config: {
       api: 'https://mempool.space/api',
       ws: 'wss://mempool.space/api/v1/ws',
+      apiTimeoutMs: 20000,                                    // a request that takes longer is given up (a stuck one would block its screen for good)
       summaryMinRatio: 0.95,                                  // a block summary with fewer rows than this share of tx_count is incomplete
       stats: { jPerTh: 25, refreshMs: 60000, minGapMs: 15000 },
       wallet: { pollMs: 30000, afterBlockMs: 3000 },          // see controllers/wallet.js

@@ -11,8 +11,8 @@
   /** Redraws what comes from the blocks the page holds (cheap, no request). */
   function refreshLocal() {
     const x = S.format;
-    const last = Explorer.state.blocks[0];
-    if (last) Explorer.ui.statsBar.renderSlot({ value: F.number(last.slot), sub: `a block every ~0.4 s · one in ${Explorer.chain.config.sample} shown` });
+    const head = S.live.headSlot() || Explorer.nav.liveBlocks()[0]?.slot; // the head of the chain, not the (older) block shown or searched
+    if (head) Explorer.ui.statsBar.renderSlot({ value: F.number(head), sub: `a block every ~0.4 s · one in ${Explorer.chain.config.sample} shown` });
     const rows = S.data.latestRows();
     if (rows && rows.length) {
       const share = (pred) => (rows.filter(pred).length / rows.length) * 100;

@@ -1,7 +1,7 @@
 // The contract between the engine and a blockchain.
 //
 // The ENGINE is everything that draws blocks, towers and the camera, keeps the list of blocks, the feed and the scene
-// in sync: core/, scene/, state/, ui/, controllers/ and app.js. It knows nothing about any blockchain.
+// in sync: core/, scene/, state/, ui/, controllers/, net/ (JSON-RPC client) and app.js. It knows nothing about any blockchain.
 // A CHAIN is one object, registered with Explorer.defineChain(spec) before the engine's own scripts run: it gives the engine
 // its numbers (how big is a block, which fee rates are cheap or expensive), its words (what a block card says) and,
 // later in this contract, where its data comes from. The engine only ever reads them from Explorer.chain.
@@ -83,6 +83,11 @@
     start() {},
   };
 
+  // The optional parts have a type too, when a chain gives them: [path, expected typeof]
+  const OPTIONAL = [['theme.accent', 'number'], ['nextBlock', 'boolean'], ['blockNumber', 'function'], ['openTx', 'function'], ['openBlock', 'function'],
+    ['search', 'function'], ['onBlock', 'function'], ['onVisible', 'function'], ['onHighlight', 'function'], ['start', 'function'],
+    ['rates.label', 'function'], ['rates.heightScale', 'string']];
+
   const get = (obj, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 
   // What a chain without a next block (nextBlock: false) does not have to provide
@@ -93,9 +98,20 @@
     const needed = spec.nextBlock === false ? REQUIRED.filter(([path]) => !NEXT_ONLY.has(path)) : REQUIRED;
     const problems = needed.filter(([path, type]) => typeof get(spec, path) !== type)
       .map(([path, type, why]) => `  - ${path} (${type}): ${why}`);
+    for (const [path, type] of OPTIONAL) {
+      const v = get(spec, path);
+      if (v !== undefined && typeof v !== type) problems.push(`  - ${path} (${type}) is optional, but it is a ${typeof v}`);
+    }
+    const { min, max } = spec.rates || {};
+    if (typeof min === 'number' && typeof max === 'number' && !(min > 0 && max > min)) problems.push('  - rates: 0 < min < max (the scales are logarithmic)');
+    const size = spec.capacity && spec.capacity.size;
+    if (typeof size === 'number' && !(size > 0 && Number.isFinite(size))) problems.push('  - capacity.size: a positive number');
     const stops = spec.rates && spec.rates.stops;
-    if (Array.isArray(stops) && (stops.length < 2 || stops[0][0] !== spec.rates.min || stops.at(-1)[0] !== spec.rates.max)) {
-      problems.push('  - rates.stops: at least two stops, the first at rates.min and the last at rates.max');
+    if (Array.isArray(stops)) {
+      const wellFormed = stops.every((s) => Array.isArray(s) && typeof s[0] === 'number' && typeof s[1] === 'number');
+      if (!wellFormed || stops.length < 2 || stops[0][0] !== min || stops.at(-1)[0] !== max || stops.some((s, i) => i && s[0] <= stops[i - 1][0])) {
+        problems.push('  - rates.stops: [[rate, 0xRRGGBB], ...], at least two, rising, the first at rates.min and the last at rates.max');
+      }
     }
     if (problems.length) throw new Error(`Chain "${spec.id ?? '?'}" does not fit the engine contract (js/core/chain.js):\n${problems.join('\n')}`);
   }
@@ -103,7 +119,8 @@
   /** Registers the chain the page works with (Explorer.chain). */
   Explorer.defineChain = (spec) => {
     validate(spec);
-    Explorer.chain = { ...DEFAULTS, ...spec };
+    const given = Object.fromEntries(Object.entries(spec).filter(([, v]) => v !== undefined)); // an explicit `undefined` keeps the default
+    Explorer.chain = { ...DEFAULTS, ...given, theme: { ...DEFAULTS.theme, ...given.theme } };
     return Explorer.chain;
   };
 })();

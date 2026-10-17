@@ -24,11 +24,12 @@
 
   /** Calls made with the version in force; the failures that ask for a newer version are made again with it (once). */
   async function withVersion(calls) { // calls: [[method, (version) => params]] -> results, or Errors
+    const used = current(); // the version these calls are made with: a refusal is judged against it, not against the shared value another call may have raised since
     const run = (list) => rpc.batch(list.map(([method, params]) => [method, params(current())]));
     let res = await run(calls);
     const asked = Math.max(0, ...res.map((r) => versionAsked(r) ?? 0));
-    if (asked > current()) {
-      version = asked;
+    if (asked > used) {
+      version = Math.max(current(), asked);
       const again = res.map((r, i) => (versionAsked(r) != null ? i : -1)).filter((i) => i >= 0);
       const redone = await run(again.map((i) => calls[i]));
       res = res.slice();

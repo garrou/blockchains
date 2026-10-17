@@ -55,11 +55,11 @@
 
   /**
    * Layout of one block's platform: every tx, the coinbase too, gets a rectangle with an area proportional to its vsize,
-   * on the same scale for every block (a full block, ~1 Mvb, fills the platform). A lighter block fills only a square of
+   * on the same scale for every block (a full block, capacity.size, fills the platform). A lighter block fills only a square of
    * the corner, so a lone coinbase, or 2-3 big txs, stay compact (neither a giant block, nor thin slivers). The coinbase
    * comes first, so it always sits in the same corner; only its color and its fixed height mark it. Provisional data
    * (txs.approx, vsize = 1): whole platform. Returns parallel arrays: list (txs in layout order), rects, heights, and
-   * colors (Float32Array, 3 per tx), plus `free` (the rectangles left empty) and `scale` (area per vB).
+   * colors (Float32Array, 3 per tx), plus `free` (the rectangles left empty) and `scale` (area per unit of size).
    */
   function layoutBlock(txs, order, capacity = Explorer.chain.capacity.size) {
     const list = [...txs.filter((x) => x.coinbase), ...orderTxs(txs.filter((x) => !x.coinbase), order)];
@@ -117,7 +117,7 @@
   function stableLayout() {
     let placed = null;  // txid -> rect, null before the first layout
     let free = [];      // free rectangles: disjoint from each other and from the placed ones
-    let scale = 0;      // area per vB, fixed between two full layouts
+    let scale = 0;      // area per unit of size, fixed between two full layouts
 
     function addFree(r) { // a free piece, merged with the neighbours it shares a whole edge with
       let cur = r;

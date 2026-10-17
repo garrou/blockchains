@@ -13,7 +13,7 @@
   function classify(query) {
     const q = String(query).trim();
     // a 64-digit string is a hash even if it only contains decimal digits: test it before the height
-    if (/^[0-9a-fA-F]{64}$/.test(q)) return { type: 'hash', hash: q, blockFirst: q.startsWith('00000000') };
+    if (/^[0-9a-fA-F]{64}$/.test(q)) return { type: 'hash', hash: q.toLowerCase(), blockFirst: q.startsWith('00000000') };
     if (/^\d+$/.test(q)) return { type: 'height', height: Number(q) };
     const address = Explorer.bitcoin.address.parse(q);
     if (address) return { type: 'address', address };

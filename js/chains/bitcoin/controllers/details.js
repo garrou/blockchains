@@ -11,6 +11,9 @@
   // late response must not open it again.
   const wanted = (token) => isCurrent(token) && Explorer.ui.dialog.isOpen();
 
+  /** What the dialog says when a request failed: "not found" only for a 404, the reason otherwise (network, rate limit...). */
+  const failure = (what, e) => (e.status === 404 ? `${what} not found` : `Could not load the ${what.toLowerCase()} (${e.message})`);
+
   async function openTx(txid) {
     const token = begin();
     Explorer.ui.detail.loading();
@@ -18,7 +21,7 @@
       const tx = await Explorer.bitcoin.api.tx(txid);
       if (wanted(token)) Explorer.ui.detail.tx(tx);
     } catch (e) {
-      if (wanted(token)) Explorer.ui.detail.message(`Transaction not found (${e.message})`);
+      if (wanted(token)) Explorer.ui.detail.message(failure('Transaction', e));
     }
   }
 
@@ -33,7 +36,7 @@
       const known = Explorer.state.blocks.find((x) => x.id === hash);
       Explorer.ui.detail.block({ ...b0, extras: b0.extras ?? known?.extras }, txs);
     } catch (e) {
-      if (wanted(token)) Explorer.ui.detail.message(`Block not found (${e.message})`);
+      if (wanted(token)) Explorer.ui.detail.message(failure('Block', e));
     }
   }
 

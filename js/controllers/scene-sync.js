@@ -58,7 +58,8 @@
       running++;
       let timer;
       const timeout = new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('timeout')), S.loadTimeoutMs); });
-      Promise.race([Explorer.chain.data.blockTowers(b), timeout]).then(resolve, reject).finally(() => { clearTimeout(timer); running--; pump(); });
+      Promise.race([Promise.resolve().then(() => Explorer.chain.data.blockTowers(b)), timeout]) // a chain function that throws rejects, it does not leave `running` stuck
+        .then(resolve, reject).finally(() => { clearTimeout(timer); running--; pump(); });
     }
   }
 
@@ -190,7 +191,7 @@
 
   function publishNow() { clearTimeout(projTimer); projTimer = 0; publish(); }
 
-  /** A `projected-block-transactions` message. Returns the txs that just entered the block (for the feed). */
+  /** News about the next block's contents (opaque: given to the chain's createPending().apply). Returns the txs that just entered the block (for the feed). */
   function onProjected(raw) {
     const res = projection.apply(raw);
     if (!res) return [];
