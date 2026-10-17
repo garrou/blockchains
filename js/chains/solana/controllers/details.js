@@ -10,13 +10,12 @@
   // late response must not open it again.
   const wanted = (token) => isCurrent(token) && BTC.ui.dialog.isOpen();
   const must = (x) => { if (x instanceof Error) throw x; return x; };
-  const OPTS = { maxSupportedTransactionVersion: 0, commitment: 'confirmed' };
 
   async function openTx(signature) {
     const token = begin();
     BTC.ui.detail.loading();
     try {
-      const tx = await S.rpc.call('getTransaction', [signature, { ...OPTS, encoding: 'jsonParsed' }]);
+      const tx = await S.rpc.transaction(signature);
       if (!tx) throw Object.assign(new Error('no such transaction'), { status: 404 });
       if (!wanted(token)) return;
       BTC.ui.detail.tx({ signature, tx, slot: tx.slot, blockTime: tx.blockTime });

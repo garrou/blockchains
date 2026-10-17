@@ -32,6 +32,7 @@
       rpcTimeoutMs: 15000,
       pageSize: 15,                                   // blocks per request of the block list
       gasLimit: 60e6,                                 // block gas limit until a block tells the real one
+      wsStaleMs: 60000,                               // a WebSocket that says nothing for this long is dropped and opened again
       pollMs: 6000,                                   // looking for a new block when the WebSocket is down
       projectMs: 1000,                                // the guess of the next block is refreshed at most this often
       pending: { fetchPerSec: 20, tickMs: 500 },      // pending transactions fetched per second (a sample of the mempool is enough)

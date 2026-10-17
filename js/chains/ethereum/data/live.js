@@ -25,6 +25,10 @@
   /** The base fee of the next block and the room it has are known from the latest block seen. */
   function noteTip(block) {
     if (block.height < tipHeight) return;
+    if (tipHeight && block.height > tipHeight + 1) { // blocks were missed (socket down, a failed read): what they mined is still in the pool
+      pool.clear();
+      needSnapshot = true;
+    }
     tipHeight = block.height;
     gasLimit = block.gasLimit;
     if (block.baseFeeWei != null) pool.setBase(E.blocks.nextBaseFee(block.baseFeeWei, block.gasUsed, block.gasLimit));
@@ -159,7 +163,7 @@
     pool, noteTip,
     connect(h) {
       handlers = h;
-      BTC.jsonrpc.socket({ urls: () => cfg().ws, onOpen, onMessage, onClose });
+      BTC.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose });
       setInterval(fetchQueued, cfg().pending.tickMs);
       setInterval(projectNow, cfg().projectMs);
       setInterval(poll, cfg().pollMs);

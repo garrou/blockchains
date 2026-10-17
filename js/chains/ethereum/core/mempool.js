@@ -55,6 +55,9 @@
 
       remove,
 
+      /** Forgets everything (blocks were missed: what they mined cannot be told apart from what still waits). */
+      clear() { byHash.clear(); bySlot.clear(); bySender.clear(); },
+
       /** A block was mined: its transactions leave the pool, and so does anything the same senders sent with a nonce they have used up. */
       dropMined(rows) {
         let dropped = 0;

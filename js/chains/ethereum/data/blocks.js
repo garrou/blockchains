@@ -17,7 +17,7 @@
   async function headers(heights) {
     const res = await E.rpc.batch(heights.map((n) => ['eth_getBlockByNumber', [hex(n), false]]));
     const blocks = res.map((r) => (r && !(r instanceof Error) ? E.blocks.normalize(r) : null));
-    if (blocks.every((b) => b === null)) { const err = res.find((r) => r instanceof Error); if (err) throw err; }
+    if (blocks.every((b) => b === null)) throw res.find((r) => r instanceof Error) ?? notFound('block'); // nothing at all: a failure to retry, not an empty list
     return blocks.filter(Boolean);
   }
 

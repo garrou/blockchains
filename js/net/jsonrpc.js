@@ -66,13 +66,18 @@
   /**
    * A WebSocket that reconnects by itself, to the next of the nodes each time, with a growing delay.
    *   urls():                the nodes (ws:// URLs)
+   *   staleMs:               a connection that says nothing for this long is considered dead (a silent drop is not always noticed) and replaced
    *   onOpen(send, ctl):     the connection is open: send the subscriptions. Call ctl.ready() once they are accepted: it resets the delay
    *   onMessage(msg, ctl):   a message (parsed JSON)
    *   onClose():             the connection was lost
    * Returns ctl = { send(obj), ready(), close() }.
    */
-  function socket({ urls, onOpen, onMessage, onClose }) {
-    let ws = null, index = 0, retry = 0;
+  function socket({ urls, staleMs = 0, onOpen, onMessage, onClose }) {
+    let ws = null, index = 0, retry = 0, watchdog = 0;
+    const heard = () => { // the connection is alive: the countdown starts again
+      clearTimeout(watchdog);
+      if (staleMs) watchdog = setTimeout(() => { if (ws) ws.close(); }, staleMs);
+    };
     const ctl = {
       send(obj) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); },
       ready() { retry = 0; },
@@ -81,13 +86,15 @@
     function open() {
       const list = urls();
       ws = new WebSocket(list[index % list.length]);
-      ws.onopen = () => onOpen(ctl.send, ctl);
+      ws.onopen = () => { heard(); onOpen(ctl.send, ctl); };
       ws.onmessage = (ev) => {
+        heard();
         let msg;
         try { msg = JSON.parse(ev.data); } catch { return; } // ignore malformed frames
         onMessage(msg, ctl);
       };
       ws.onclose = () => {
+        clearTimeout(watchdog);
         onClose();
         index++; // the next node, in case this one is the problem
         setTimeout(open, Math.min(30000, 1000 * 2 ** retry++));

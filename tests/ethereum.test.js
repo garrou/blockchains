@@ -158,6 +158,24 @@ test('mempool: best tip first, fits the block, replaced and mined txs leave', ()
   assert.ok(!small.has('0xx') && small.has('0xy') && small.has('0xz'));
 });
 
+test('addresses are lower-cased whatever the node sends', () => {
+  const mixed = { ...tx({ id: 'm', from: '0xAbC' }), to: '0xDeF' };
+  const p = E.txs.pending(mixed);
+  assert.strictEqual(p.from, '0xabc'); assert.strictEqual(p.to, '0xdef');
+  const r = E.txs.row({ ...mixed, gasPrice: '0x1' }, null, { baseFeeWei: gwei(1) });
+  assert.strictEqual(r.from, '0xabc'); assert.strictEqual(r.to, '0xdef');
+  const pool = E.mempool.create(); pool.add(p);
+  assert.strictEqual(pool.involving('0xABC').length, 1);       // looked up in any case
+});
+
+test('mempool: clear forgets everything', () => {
+  const pool = E.mempool.create(); pool.setBase(gwei(1));
+  pool.add(E.txs.pending(tx({ id: 'a', from: '0x1' }))); pool.add(E.txs.pending(tx({ id: 'b', from: '0x2' })));
+  pool.clear();
+  assert.strictEqual(pool.size(), 0); assert.strictEqual(pool.pack(1e6).nTx, 0);
+  assert.strictEqual(pool.add(E.txs.pending(tx({ id: 'a', from: '0x1' }))), 'new');   // and the same sender / nonce can come back
+});
+
 test('projection holder: snapshot, then deltas', () => {
   const p = E.projection.create();
   assert.strictEqual(p.apply({ added: [{ txid: 'a' }] }), null);          // a delta before any snapshot is ignored

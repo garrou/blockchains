@@ -27,10 +27,12 @@
       rpc: ['https://solana-rpc.publicnode.com', 'https://api.mainnet-beta.solana.com'],
       ws: ['wss://solana-rpc.publicnode.com', 'wss://api.mainnet-beta.solana.com'],
       rpcTimeoutMs: 25000,
+      maxTxVersion: 1,                                // newest transaction version asked of the node at first (a node that wants more says so, see data/rpc.js)
       sample: 10,                                     // one block out of this many slots is shown (a slot lasts about 0.4 s)
       pageSize: 15,                                   // blocks per request of the block list
       txRef: 3000,                                    // a busy block, in transactions: what the card's fill bar is relative to
       maxCatchUp: 4,                                  // blocks the page may be behind before it asks the engine to reload the list
+      wsStaleMs: 15000,                               // a WebSocket that says nothing for this long is dropped and opened again (a slot every 0.4 s)
       pollMs: 5000,                                   // looking at the head slot when the WebSocket is down
       feedPerBlock: 12,                               // transactions of each new block that go to the feed
       stats: { refreshMs: 15000, localMs: 2000 },     // the statistics bar: asked of the node / redrawn from what is held

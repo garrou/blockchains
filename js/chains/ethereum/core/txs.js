@@ -79,8 +79,8 @@
     const gasUsed = receipt ? Number(big(receipt.gasUsed)) : null;
     return {
       hash: tx.hash,
-      from: tx.from,
-      to: tx.to ?? null,
+      from: tx.from.toLowerCase(),         // nodes do not all spell addresses the same way: lower case everywhere
+      to: tx.to ? tx.to.toLowerCase() : null,
       valueWei: big(tx.value),
       nonce: Number(big(tx.nonce)),
       type: Number(big(tx.type ?? 0)),
@@ -124,7 +124,7 @@
     const legacy = tx.maxFeePerGas == null;
     const selector = selectorOf(tx.input);
     return {
-      hash: tx.hash, from: tx.from, to: tx.to ?? null, valueWei: big(tx.value), nonce: Number(big(tx.nonce)),
+      hash: tx.hash, from: tx.from.toLowerCase(), to: tx.to ? tx.to.toLowerCase() : null, valueWei: big(tx.value), nonce: Number(big(tx.nonce)),
       gas: Number(big(tx.gas)), type: Number(big(tx.type ?? 0)),
       maxFee: legacy ? big(tx.gasPrice) : big(tx.maxFeePerGas),
       maxPriority: legacy ? big(tx.gasPrice) : big(tx.maxPriorityFeePerGas),

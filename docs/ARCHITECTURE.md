@@ -31,7 +31,7 @@ js/
     controllers/ the chain's orchestration (detail requests, search, statistics; Bitcoin: tracked address)
 css/             style.css (shared), ethereum.css, solana.css
 index.html  ethereum.html  solana.html      one page per chain: same engine scripts, the chain's own scripts
-tests/           node tests/ethereum.test.js, node tests/solana.test.js: the pure logic of each chain
+tests/           node tests/ethereum.test.js, tests/solana.test.js (pure logic of each chain), tests/jsonrpc.test.js (the shared client)
 ```
 
 All files are classic scripts sharing the global `BTC` (no modules, no build): the page works when double-clicked.
@@ -100,9 +100,11 @@ lacks that call; the next block is only a guess since a public node announces th
 
 What is Solana-specific: most transactions of a block are validators' votes (flat dark towers); the base fee is the same for
 everybody (5000 lamports per signature), so the height of a tower is the priority fee, what people bid to be first.
+A Solana node refuses a block that holds a transaction newer than the version the client says it supports (error -32015, it names
+the version to use); `data/rpc.js` takes that number and asks again, so a new version of the format does not blank the page.
 
-Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit; use your own node by
-changing those lists.
+Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit, and their operators see
+the IP address of the visitor and the addresses and transactions he looks up. Use your own node by changing those lists.
 
 ## Adding a chain
 

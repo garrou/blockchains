@@ -9,7 +9,6 @@
   const S = (BTC.sol = BTC.sol || {});
   const cfg = () => BTC.chain.config;
 
-  const OPTS = { rewards: false, maxSupportedTransactionVersion: 0, commitment: 'confirmed' };
   const known = new Map(); // block id -> block, for the blocks seen (a block cannot be found by its hash on Solana)
 
   function notFound(what) {
@@ -18,7 +17,12 @@
     return err;
   }
 
-  const remember = (blocks) => { blocks.forEach((b) => known.set(b.id, b)); return blocks; };
+  const KNOWN_MAX = 600; // about 40 minutes of blocks: enough for the list and its history
+  const remember = (blocks) => {
+    blocks.forEach((b) => known.set(b.id, b));
+    while (known.size > KNOWN_MAX) known.delete(known.keys().next().value);
+    return blocks;
+  };
 
   /**
    * The blocks of the groups [top - count + 1 .. top], newest first. A group's block is the first one produced from its first
@@ -32,7 +36,7 @@
       const slot = slots.find((s) => s >= S.blocks.firstSlotOf(g));
       if (slot !== undefined && S.blocks.groupOf(slot) === g) chosen.push(slot);
     }
-    const res = await S.rpc.batch(chosen.map((slot) => ['getBlock', [slot, { ...OPTS, transactionDetails: 'signatures' }]]));
+    const res = await S.rpc.blocks(chosen, 'signatures');
     const blocks = [];
     res.forEach((raw, i) => { if (raw && !(raw instanceof Error)) blocks.push(S.blocks.normalize(chosen[i], raw)); });
     if (!blocks.length) throw res.find((r) => r instanceof Error) ?? notFound('block');
@@ -67,9 +71,9 @@
   let latest = null;       // { height, rows } of the newest block whose transactions were read: the feed's source
 
   async function load(b) {
-    const raw = await S.rpc.call('getBlock', [b.slot, { ...OPTS, transactionDetails: 'accounts' }]);
+    const raw = await S.rpc.block(b.slot, 'accounts');
     if (!raw) throw notFound('block');
-    const rows = raw.transactions.map((t, i) => S.txs.row(t, i));
+    const rows = raw.transactions.map((t, i) => S.txs.row(t, i)).filter(Boolean);
     if (!latest || b.height >= latest.height) latest = { height: b.height, rows };
     return { block: b, rows };
   }
@@ -88,7 +92,7 @@
   /** The block of an exact slot (any slot, shown or not), without the link to its neighbour; null for a skipped slot. */
   async function blockAt(slot) {
     try {
-      const raw = await S.rpc.call('getBlock', [slot, { ...OPTS, transactionDetails: 'signatures' }]);
+      const raw = await S.rpc.block(slot, 'signatures');
       return raw ? S.blocks.normalize(slot, raw) : null;
     } catch (e) {
       if (e.code === -32007 || e.code === -32009) return null; // skipped / missing

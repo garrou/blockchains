@@ -99,6 +99,14 @@ test('a transaction row: priority fee, rate, what moved', () => {
   assert.ok(S.txs.towerOf(S.txs.row({ transaction: { signatures: ['n'], accountKeys: keys('p') }, meta: null })).vsize > 0, 'a transaction without meta still has a size');
 });
 
+test('a transaction in a format we do not know is skipped, not fatal', () => {
+  assert.strictEqual(S.txs.row({ transaction: { signatures: ['s'] }, meta: {} }), null);          // no accounts
+  assert.strictEqual(S.txs.row({ transaction: { accountKeys: keys('p'), signatures: [] } }), null); // no signature
+  assert.strictEqual(S.txs.row({ meta: {} }), null);
+  const v1 = S.txs.row({ transaction: { signatures: ['s'], message: { accountKeys: keys('payer', SYSTEM) } }, meta: { fee: 5000, computeUnitsConsumed: 150 }, version: 1 });
+  assert.ok(v1 && v1.sig === 's' && v1.payer === 'payer');                                          // keys under message: read as well
+});
+
 test('compute budget and instructions in words', () => {
   const b58 = encode;
   const limit = b58([2, 0x40, 0x0d, 0x03, 0x00]);                    // 200,000 as u32 little-endian

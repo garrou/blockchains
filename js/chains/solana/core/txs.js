@@ -13,11 +13,14 @@
 
   /**
    * One transaction of a block read with the `accounts` detail ({ transaction: { signatures, accountKeys }, meta }).
-   * accountKeys: strings, or { pubkey } objects.
+   * accountKeys: strings, or { pubkey } objects. Returns null for something that is not a transaction we can read (a format we do
+   * not know yet: one odd transaction must not take the whole block with it).
    */
   function row(entry, index = null) {
-    const tx = entry.transaction, meta = entry.meta ?? {};
-    const keys = tx.accountKeys.map((k) => (typeof k === 'string' ? k : k.pubkey));
+    const tx = entry && entry.transaction, meta = entry.meta ?? {};
+    const rawKeys = tx && (tx.accountKeys ?? tx.message?.accountKeys);
+    if (!tx || !Array.isArray(tx.signatures) || !tx.signatures.length || !Array.isArray(rawKeys) || !rawKeys.length) return null;
+    const keys = rawKeys.map((k) => (typeof k === 'string' ? k : k.pubkey));
     const nSigs = tx.signatures.length;
     const fee = meta.fee ?? BASE_FEE * nSigs;
     const cu = meta.computeUnitsConsumed > 0 ? meta.computeUnitsConsumed : null;

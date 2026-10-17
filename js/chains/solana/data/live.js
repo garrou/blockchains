@@ -15,7 +15,6 @@
   let busy = false;
   let lastBackfill = 0;
 
-  const OPTS = { rewards: false, maxSupportedTransactionVersion: 0, commitment: 'confirmed' };
   const LAG = 3; // slots to wait after the start of a group before reading its block: it has to be produced and confirmed
 
   /** The newest block seen (from the list the engine loads): where the stream goes on from. */
@@ -38,7 +37,7 @@
         }
         const slots = await S.rpc.call('getBlocks', [start, Math.min(latestSlot, start + cfg().sample - 1), { commitment: 'confirmed' }]);
         if (!slots.length) break;
-        const raw = await S.rpc.call('getBlock', [slots[0], { ...OPTS, transactionDetails: 'signatures' }]);
+        const raw = await S.rpc.block(slots[0], 'signatures');
         if (!raw) break;
         const block = S.blocks.normalize(slots[0], raw, last.id);
         S.data.remember([block]);
@@ -87,7 +86,7 @@
     noteTip,
     connect(h) {
       handlers = h;
-      BTC.jsonrpc.socket({ urls: () => cfg().ws, onOpen, onMessage, onClose });
+      BTC.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose });
       setInterval(poll, cfg().pollMs);
     },
     trackNext() {}, // nothing to track: there is no next block

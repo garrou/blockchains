@@ -49,7 +49,7 @@
       baseFeeWei,                                       // null before the London fork
       baseFee: baseFeeWei == null ? null : weiToGwei(baseFeeWei),
       burnt: baseFeeWei == null ? 0 : Number(baseFeeWei * BigInt(gasUsed)) / 1e18, // ETH destroyed by the block
-      miner: r.miner,
+      miner: r.miner.toLowerCase(),
       builder: builderOf(r.extraData),
       extraData: r.extraData,
       size: Number(big(r.size)),
