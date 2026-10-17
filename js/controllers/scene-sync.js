@@ -3,12 +3,12 @@
 // A mined block never changes: its contents are downloaded once and kept, so browsing the history never loses detail.
 (() => {
   'use strict';
-  const BTC = (window.BTC = window.BTC || {});
-  const S = BTC.config.scene;
-  const state = BTC.state;
+  const Explorer = (window.Explorer = window.Explorer || {});
+  const S = Explorer.config.scene;
+  const state = Explorer.state;
 
   let scene = null;
-  const projection = BTC.projection.create();
+  const projection = Explorer.chain.createPending(); // the towers of the next block, as the chain describes them
   // block id -> { promise, txs }: the contents of a block (txs is set once they are here), the most recently used last.
   // Complete contents are kept (up to S.cache blocks); the same array reference avoids rebuilding the scene.
   const cache = new Map();
@@ -20,18 +20,20 @@
   let projTimer = 0, projShown = false;
 
   // The blocks that exist in 3D: a window that slides with the camera (it is centered on the focused slot).
-  const windowStart = () => BTC.blocks.windowStart(state.blocks, state.focusId, S.reach);
-  const windowBlocks = () => BTC.blocks.windowAround(state.blocks, state.focusId, S.reach);
-  const showsNext = () => !state.detached && windowStart() === 0; // the next block only makes sense next to the latest one
+  const windowStart = () => Explorer.blocks.windowStart(state.blocks, state.focusId, S.reach);
+  const windowBlocks = () => Explorer.blocks.windowAround(state.blocks, state.focusId, S.reach);
+  const hasNext = () => Explorer.chain.nextBlock !== false; // a chain without a mempool has no next block to draw
+  const showsNext = () => hasNext() && !state.detached && windowStart() === 0; // the next block only makes sense next to the latest one
   const known = (id) => { const e = cache.get(id); return !!(e && e.txs && !e.txs.approx); }; // complete contents in memory
-  const near = (b) => BTC.blocks.isNear(windowBlocks(), b.id, state.focusId, S.detailRadius);
-  const wantsDetail = (b) => BTC.blocks.wantsDetail(windowBlocks(), b.id, state.focusId, S.detailRadius, known);
-  const distance = (b) => BTC.blocks.slotDistance(windowBlocks(), b.id, state.focusId) ?? Infinity; // Infinity: not in the window
+  const radius = () => Explorer.chain.detailRadius ?? S.detailRadius; // the chain may ask for fewer detailed blocks (a heavy read)
+  const near = (b) => Explorer.blocks.isNear(windowBlocks(), b.id, state.focusId, radius());
+  const wantsDetail = (b) => Explorer.blocks.wantsDetail(windowBlocks(), b.id, state.focusId, radius(), known);
+  const distance = (b) => Explorer.blocks.slotDistance(windowBlocks(), b.id, state.focusId) ?? Infinity; // Infinity: not in the window
 
   /** The scene message always describes the block the camera is on. */
   function updateMessage() {
     const st = status.get(state.focusId);
-    BTC.ui.hud.setMessage(st === 'loading' ? 'Loading block…'
+    Explorer.ui.hud.setMessage(st === 'loading' ? 'Loading block…'
       : st === 'error' ? "Can't load the block right now, retrying…"
         : st === 'failed' ? "Can't load the block. Click it to retry." : '');
   }
@@ -47,21 +49,9 @@
 
   // ----- mined blocks -----
 
-  /** Block contents: the "summary" gives everything in one call; otherwise fall back to the bare txids (provisional). */
-  async function fetchTxs(b) {
-    try {
-      const rows = await BTC.api.blockSummary(b.id);
-      // A freshly mined block may have an incomplete summary (sometimes only the coinbase): drawing it would give a
-      // wrong scene (one giant tower). Reject it and retry later.
-      if (BTC.txs.isCompleteSummary(rows, b.tx_count)) return BTC.txs.fromSummary(rows);
-      console.warn(`block ${b.height} summary incomplete (${Array.isArray(rows) ? rows.length : '?'}/${b.tx_count || 0}), retrying later`);
-    } catch (e) { console.warn('summary unavailable, falling back to /txids', e); }
-    return BTC.txs.provisional(await BTC.api.blockTxids(b.id), b.extras?.medianFee);
-  }
-
   /** Starts the waiting downloads while slots are free: the block nearest to the camera first; one no longer near is dropped. */
   function pump() {
-    while (running < S.loads && queue.length) {
+    while (!document.hidden && running < S.loads && queue.length) { // nobody sees a hidden tab: no downloads until it is shown again
       let best = 0;
       queue.forEach((q, i) => { if (distance(q.b) < distance(queue[best].b)) best = i; });
       const { b, resolve, reject } = queue.splice(best, 1)[0];
@@ -69,7 +59,8 @@
       running++;
       let timer;
       const timeout = new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('timeout')), S.loadTimeoutMs); });
-      Promise.race([fetchTxs(b), timeout]).then(resolve, reject).finally(() => { clearTimeout(timer); running--; pump(); });
+      Promise.race([Promise.resolve().then(() => Explorer.chain.data.blockTowers(b)), timeout]) // a chain function that throws rejects, it does not leave `running` stuck
+        .then(resolve, reject).finally(() => { clearTimeout(timer); running--; pump(); });
     }
   }
 
@@ -96,21 +87,25 @@
       retryTimers.delete(b.id);
       retryCount.set(b.id, (retryCount.get(b.id) || 0) + 1);
       if (!wantsDetail(b)) { status.delete(b.id); updateMessage(); return; } // no longer shown in detail: drop the retry
+      const held = cache.get(b.id);
+      if (held && held.txs && !held.txs.approx) { status.delete(b.id); updateMessage(); return; } // it came by another way meanwhile: nothing to read again
       cache.delete(b.id);
-      load(b);
+      load(b, true);
     }, S.retryMs));
     return true;
   }
 
   /** Light shape of a block: a solid block as high as it is full, colored by its median fee. */
   function simplify(b) {
-    scene.setSummary(b.id, { fill: BTC.blocks.fillPercent(b) / 100, rate: b.extras?.medianFee });
+    scene.setSummary(b.id, { fill: Explorer.chain.fill(b), rate: Explorer.chain.typicalRate(b) });
     light.add(b.id);
   }
 
   /** Draws the contents of a block in its slot: at once when they are known, otherwise after downloading them. */
-  async function load(b) {
+  async function load(b, force = false) {
     let entry = cache.get(b.id);
+    // a block that failed waits for its retry (or for a click on it): it is not asked for again at every sync, which would defeat the delay
+    if (!entry && !force && (status.get(b.id) === 'error' || status.get(b.id) === 'failed')) return;
     if (entry) { cache.delete(b.id); cache.set(b.id, entry); } // most recently used
     else { entry = download(b); cache.set(b.id, entry); trim(); }
     if (!entry.txs) { // not here yet: a light shape stands in until the detail arrives
@@ -158,11 +153,11 @@
     const shown = windowBlocks();
     // Every block keeps its place in the world: the chain is laid out by rank in the list, not by rank in the window, so
     // the window can slide along without anything moving (the next block, when the chain is live, sits at 0).
-    const first = (state.detached ? 0 : 1) + windowStart();
+    const first = (state.detached || !hasNext() ? 0 : 1) + windowStart();
     scene.setSlots([
       ...(showsNext() ? [{ id: S.nextId, kind: 'next', label: 'NEXT', pos: 0 }] : []),
       ...shown.map((b, i) => ({
-        id: b.id, kind: 'mined', label: `#${BTC.format.number(b.height)}`, prev: b.previousblockhash, pos: first + i,
+        id: b.id, kind: 'mined', label: `#${Explorer.chain.blockNumber(b)}`, prev: b.previousblockhash, pos: first + i,
         ...(b.id === fresh && showsNext() ? { from: 0, fresh: true } : {}),
       })),
     ]);
@@ -201,7 +196,7 @@
 
   function publishNow() { clearTimeout(projTimer); projTimer = 0; publish(); }
 
-  /** A `projected-block-transactions` message. Returns the txs that just entered the block (for the feed). */
+  /** News about the next block's contents (opaque: given to the chain's createPending().apply). Returns the txs that just entered the block (for the feed). */
   function onProjected(raw) {
     const res = projection.apply(raw);
     if (!res) return [];
@@ -215,10 +210,12 @@
     projShown = false;
     clearTimeout(projTimer); projTimer = 0;
     if (scene) scene.setTxs(S.nextId, null);
-    BTC.socket.trackNextBlock();
+    Explorer.chain.live.trackNext?.();
   }
 
-  BTC.sceneSync = {
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pump(); }); // the downloads that waited for the tab to be shown
+
+  Explorer.sceneSync = {
     init(sceneInstance) { scene = sceneInstance; },
     active: () => scene !== null,
     sync, focus, publishNow, onProjected, resetProjection,
@@ -227,12 +224,16 @@
     hasProjection: () => projection.hasData(),
     /** Tracked wallet: { txids, blocks, dim } makes its towers glow (see scene3d.setHighlight); null stops. */
     setHighlight(tracked) { if (scene) scene.setHighlight(tracked); },
+    /** Only the towers of these kinds (a Set of tower colors) keep their color; null: all of them (see scene3d.setKindFilter). */
+    setKindFilter(colors) { if (scene) scene.setKindFilter(colors); },
     /** Txids of the tracked towers that are currently drawn. */
     litTxids: () => (scene ? scene.litTxids() : new Set()),
     /** Transactions displayed by a slot (diagnostics). */
     txCount: (id) => (scene ? scene.txCount(id) : 0),
     stream(items) { if (scene && items.length) scene.stream(items); },
     setOrder(mode) { if (scene) scene.setOrder(mode); },
+    /** The towers are colored by another thing (Explorer.colors.setMode): paint them again. */
+    recolor() { if (scene) scene.recolor(); },
     setPlacement(mode) { if (scene) scene.setPlacement(mode); },
   };
 })();

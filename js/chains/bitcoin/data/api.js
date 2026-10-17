@@ -1,0 +1,62 @@
+// REST client for mempool.space. Network only: no DOM, no app state.
+(() => {
+  'use strict';
+  const Explorer = (window.Explorer = window.Explorer || {});
+  Explorer.bitcoin = Explorer.bitcoin || {};
+
+  /** GET a path of the API. Rejects with an Error carrying `.status` (HTTP status) when the response is not ok. */
+  async function get(path) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), Explorer.chain.config.apiTimeoutMs); // covers the answer and its body: a stalled one is given up
+    const t0 = Date.now();
+    try {
+      const res = await fetch(Explorer.chain.config.api + path, { signal: ctl.signal });
+      if (!res.ok) {
+        const err = new Error(`${res.status} ${path}`);
+        err.status = res.status;
+        throw err;
+      }
+      const type = res.headers.get('content-type') || '';
+      const body = type.includes('json') ? await res.json() : await res.text();
+      Explorer.diag?.count('http.ok'); Explorer.diag?.gauge('http.node', `${Explorer.chain.config.api} (${Date.now() - t0} ms)`);
+      return body;
+    } catch (e) {
+      Explorer.diag?.count('http.failed');
+      if (e.status !== 404) Explorer.diag?.note('net', `${path} failed after ${Date.now() - t0} ms: ${e.name === 'AbortError' ? 'timeout' : e.message}`); // a 404 is an answer
+      throw e;
+    } finally { clearTimeout(timer); }
+  }
+
+  Explorer.bitcoin.api = {
+    get,
+    /** 15 latest blocks, newest first (with the mining `extras`). */
+    blocks: () => get('/v1/blocks'),
+    /** 15 blocks starting at `height`, newest first. */
+    blocksFrom: (height) => get(`/v1/blocks/${height}`),
+    /** Basic block data (no mining extras). */
+    blockBasic: (hash) => get(`/block/${hash}`),
+    /** Block with the mining extras (pool, median fee, total fees); falls back to the basic data. */
+    block: (hash) => get(`/v1/block/${hash}`).catch(() => get(`/block/${hash}`)),
+    blockHash: (height) => get(`/block-height/${height}`),
+    /** First 25 full transactions of a block. */
+    blockTxs: (hash) => get(`/block/${hash}/txs`),
+    /** One row per tx ({txid, fee, vsize, rate, ...}), coinbase first. */
+    blockSummary: (hash) => get(`/v1/block/${hash}/summary`),
+    blockTxids: (hash) => get(`/block/${hash}/txids`),
+    tx: (txid) => get(`/tx/${txid}`),
+    /** Totals of an address ({address, chain_stats, mempool_stats}); an address without history gives zeros. 400 = not a valid address. */
+    address: (address) => get(`/address/${encodeURIComponent(address)}`),
+    /** Transactions of an address, newest first: the unconfirmed ones (up to 50), then the 25 latest confirmed. */
+    addressTxs: (address) => get(`/address/${encodeURIComponent(address)}/txs`),
+    /** The 25 confirmed transactions of an address that come after `lastTxid` (the oldest one already known). */
+    addressTxsAfter: (address, lastTxid) => get(`/address/${encodeURIComponent(address)}/txs/chain/${lastTxid}`),
+    /** Fees to pay now: { fastestFee, halfHourFee, hourFee, economyFee, minimumFee } in sat/vB. */
+    fees: () => get('/v1/fees/recommended'),
+    /** The family of an unconfirmed transaction (CPFP): { ancestors, descendants, effectiveFeePerVsize, ... }. */
+    cpfp: (txid) => get(`/v1/cpfp/${txid}`),
+    /** ~10 latest transactions that entered the mempool, newest first. */
+    recent: () => get('/mempool/recent'),
+    hashrate3d: () => get('/v1/mining/hashrate/3d'),
+    difficultyAdjustment: () => get('/v1/difficulty-adjustment'),
+  };
+})();
