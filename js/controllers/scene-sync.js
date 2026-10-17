@@ -25,8 +25,9 @@
   const hasNext = () => Explorer.chain.nextBlock !== false; // a chain without a mempool has no next block to draw
   const showsNext = () => hasNext() && !state.detached && windowStart() === 0; // the next block only makes sense next to the latest one
   const known = (id) => { const e = cache.get(id); return !!(e && e.txs && !e.txs.approx); }; // complete contents in memory
-  const near = (b) => Explorer.blocks.isNear(windowBlocks(), b.id, state.focusId, S.detailRadius);
-  const wantsDetail = (b) => Explorer.blocks.wantsDetail(windowBlocks(), b.id, state.focusId, S.detailRadius, known);
+  const radius = () => Explorer.chain.detailRadius ?? S.detailRadius; // the chain may ask for fewer detailed blocks (a heavy read)
+  const near = (b) => Explorer.blocks.isNear(windowBlocks(), b.id, state.focusId, radius());
+  const wantsDetail = (b) => Explorer.blocks.wantsDetail(windowBlocks(), b.id, state.focusId, radius(), known);
   const distance = (b) => Explorer.blocks.slotDistance(windowBlocks(), b.id, state.focusId) ?? Infinity; // Infinity: not in the window
 
   /** The scene message always describes the block the camera is on. */

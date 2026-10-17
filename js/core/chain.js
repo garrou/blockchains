@@ -74,6 +74,8 @@
   //                                `rate` still gives its height. The legend shows a swatch for each kind instead of the gradient
   //   colorSwitch                  true (needs `legend`): the towers are colored by rate at first, and the page offers to color them by kind
   //                                instead (the `color` of each tower, the swatches of `legend`). Without it, a chain with a legend is always by kind
+  //   detailRadius                 how many slots on each side of the camera are read in detail (every tower): more than that, a light shape
+  //                                until the camera comes near. Default: config.scene.detailRadius. A chain whose detail read is heavy (XRP) asks for less
   //   blockNumber(block)           how the number of a block reads ("21,500,000"). Default: its height, with thousands separators.
   //                                A chain whose engine height is not the number people know (Solana: a block is a slot) says it here
   const DEFAULTS = {
@@ -93,7 +95,7 @@
   // The optional parts have a type too, when a chain gives them: [path, expected typeof]
   const OPTIONAL = [['theme.accent', 'number'], ['nextBlock', 'boolean'], ['blockNumber', 'function'], ['openTx', 'function'], ['openBlock', 'function'],
     ['search', 'function'], ['onBlock', 'function'], ['onVisible', 'function'], ['onHighlight', 'function'], ['start', 'function'],
-    ['rates.label', 'function'], ['rates.heightScale', 'string'], ['legend', 'object'], ['colorSwitch', 'boolean']];
+    ['rates.label', 'function'], ['rates.heightScale', 'string'], ['legend', 'object'], ['colorSwitch', 'boolean'], ['detailRadius', 'number']];
 
   const get = (obj, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 

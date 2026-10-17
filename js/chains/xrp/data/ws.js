@@ -30,6 +30,9 @@
   /** The server refuses because of the load: "tooBusy" / "slowDown", or any answer that says it in words. */
   const isBusy = (msg) => msg.status === 'error' && (TOO_BUSY.has(msg.error) || /rate limit|retry in ~?\d+\s*ms|too many requests/i.test(msg.error_message ?? ''));
 
+  /** What the server says it will take for its budget to come back ("retry in ~87240ms"), in ms; null when it does not say. */
+  const retryAfter = (msg) => { const m = /retry in ~?(\d+)\s*ms/i.exec(msg.error_message ?? ''); return m ? Number(m[1]) : null; };
+
   /** How long the server asks us to wait ("retry in ~6379ms"), within reason. */
   function retryDelay(msg) {
     const m = /retry in ~?(\d+)\s*ms/i.exec(msg.error_message ?? '');
@@ -142,7 +145,9 @@
           refusals = refusals.filter((t) => now - t < cfg().switchWindowMs);
           refusals.push(now);
           // the budget is the server's own: a second refusal in a short time, and the page tries another server instead of waiting here
-          if (refusals.length >= cfg().switchAfter && cfg().ws.length > 1) { refusals = []; ctl.fail('too busy'); }
+          const told = retryAfter(msg);
+          if (cfg().ws.length > 1 && told != null && told >= cfg().switchIfWaitMs) { refusals = []; ctl.fail(`too busy, its budget comes back in ~${Math.round(told / 1000)} s`, Math.min(300000, told + 5000)); } // a long wait: not worth it, and the node is left alone until then
+          else if (refusals.length >= cfg().switchAfter && cfg().ws.length > 1) { refusals = []; ctl.fail('too busy'); }
         }
         Explorer.diag?.gauge('xrp.pace', `${gap} ms between commands`);
         busyListeners.forEach((cb) => cb(Math.ceil((pausedUntil - Date.now()) / 1000)));
@@ -178,7 +183,7 @@
     /** handlers: onSubscribed(result) the subscription is accepted, onLedger(msg) a ledger closed, onClose(). */
     start(h) {
       handlers = h;
-      return Explorer.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose });
+      return Explorer.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose, memoryKey: 'badNodes.xrp' });
     },
   };
 })();

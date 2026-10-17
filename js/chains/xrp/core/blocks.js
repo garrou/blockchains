@@ -25,8 +25,20 @@
     };
   }
 
+  /**
+   * The message the server pushes when a ledger closes -> the same block, without asking for it: it says the hash, the index, the close time
+   * and the number of transactions. `previous` is the block before it (the one just told): the ledger must follow it. null when the message
+   * lacks something or does not follow: the ledger is then read.
+   */
+  function fromEvent(msg, previous) {
+    const closed = Number(msg?.ledger_time), index = Number(msg?.ledger_index), count = Number(msg?.txn_count);
+    if (typeof msg?.ledger_hash !== 'string' || !previous || index !== previous.height + 1 || !Number.isFinite(closed) || !Number.isInteger(count) || count < 0) return null;
+    const timestamp = X.format.unixTime(closed);
+    return { id: msg.ledger_hash, height: index, previousblockhash: previous.id, timestamp, tx_count: count, closedIn: timestamp >= previous.timestamp ? timestamp - previous.timestamp : null, totalCoins: null };
+  }
+
   /** How busy a ledger looks, 0..1: its transactions against a busy ledger (config.txRef). */
   const fill = (b) => Math.min(1, b.tx_count / Explorer.chain.config.txRef);
 
-  X.blocks = { normalize, fill };
+  X.blocks = { normalize, fromEvent, fill };
 })();

@@ -92,11 +92,18 @@
    *   onOpen(send, ctl):     the connection is open: send the subscriptions. Call ctl.ready() once they are accepted: it resets the delay
    *   onMessage(msg, ctl):   a message (parsed JSON)
    *   onClose():             the connection was lost
+   *   memoryKey:             (optional) a localStorage key where the nodes to leave alone are kept, so that a reload does not start with the node that just refused
    * Returns ctl = { send(obj), ready(), close() }.
    */
-  function socket({ urls, staleMs = 0, onOpen, onMessage, onClose }) {
+  function socket({ urls, staleMs = 0, onOpen, onMessage, onClose, memoryKey = null }) {
     let ws = null, index = 0, retry = 0, watchdog = 0, timer = 0;
-    const bad = new Map(); // node -> until when it is not tried first: it closed on us at once, or the page left it (too busy)
+    // node -> until when it is not tried first: it closed on us at once, or the page left it (too busy). Kept between page loads when asked to.
+    const bad = new Map();
+    try { for (const [node, until] of JSON.parse(localStorage.getItem(memoryKey) ?? '[]')) if (until > Date.now()) bad.set(node, until); } catch { /* no storage, or nothing kept */ }
+    const avoid = (node, ms) => {
+      bad.set(node, Date.now() + ms);
+      if (memoryKey) { try { localStorage.setItem(memoryKey, JSON.stringify([...bad].filter(([, until]) => until > Date.now()))); } catch { /* storage unavailable */ } }
+    };
     const heard = () => { // the connection is alive: the countdown starts again
       clearTimeout(watchdog);
       if (staleMs) watchdog = setTimeout(drop, staleMs);
@@ -127,7 +134,7 @@
       /** The page gives this connection up (the node is too busy...): the next node is tried, and this one is left alone for `ms`. */
       fail(why, ms = 120000) {
         if (!ws) return;
-        bad.set(ws.__node, Date.now() + ms);
+        avoid(ws.__node, ms);
         Explorer.diag?.note('ws', `leaving ${ws.__node}: ${why}`);
         ws.close();
       },
@@ -160,7 +167,7 @@
         onMessage(msg, ctl);
       };
       sock.onclose = (ev) => {
-        if (Date.now() - sock.__t0 < 3000) bad.set(sock.__node, Date.now() + 120000); // closed within 3 s: not worth trying first again
+        if (Date.now() - sock.__t0 < 3000) avoid(sock.__node, 120000); // closed within 3 s: not worth trying first again
         if (ws === sock) lost(`closed by ${sock.__node} (code ${ev.code}${ev.reason ? `: ${ev.reason}` : ''}${sock.__opened ? '' : ', never opened'})`);
       };
       sock.onerror = () => sock.close();

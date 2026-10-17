@@ -13,6 +13,7 @@
   let headIndex = 0;        // newest ledger index heard of
   let busy = false;
   let lastBackfill = 0;
+  const heard = new Map();  // ledger index -> what the server pushed when it closed: enough to make the ledger's block without asking for it
 
   /** The newest ledger seen (from the list the engine loads): where the stream goes on from. */
   function noteTip(block) {
@@ -30,9 +31,11 @@
           if (Date.now() - lastBackfill > 5000) { lastBackfill = Date.now(); handlers.onOpen?.(); }
           break;
         }
-        const block = await X.data.light({ ledger_index: last.height + 1 });
+        const next = last.height + 1;
+        const block = X.blocks.fromEvent(heard.get(next), last) ?? await X.data.light({ ledger_index: next }); // asked for only when the push did not say enough
         if (block.height > last.height) last = block; else break; // the list may have been reloaded (noteTip) while this one was read
         handlers.onBlock?.(block);
+        heard.delete(next);
       }
     } catch (e) {
       console.warn('new ledger', e);
@@ -43,6 +46,8 @@
     const index = Number(msg.ledger_index);
     if (!Number.isFinite(index) || index <= headIndex) return;
     headIndex = index;
+    heard.set(index, msg);
+    for (const k of heard.keys()) if (k < index - 30) heard.delete(k); // an old push that was never used
     advance();
   }
 

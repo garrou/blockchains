@@ -42,6 +42,7 @@
       rpcTimeoutMs: 20000,
       maxInFlight: 4,                                 // commands out at once: the public servers give a budget (about 2,000 units per 10 s) and answer "tooBusy" beyond it
       switchAfter: 2, switchWindowMs: 30000,          // refusals for load within this time make the page try the next server
+      switchIfWaitMs: 10000,                          // ... and one that says its budget needs this long to come back makes it leave at once (and not come back before)
       pace: { startMs: 300, maxMs: 2000 },            // after a refusal the commands go out this far apart (it doubles at each refusal, up to the maximum, and eases off with every answer)
       maxRetries: 4,                                  // times a command refused as too busy is asked again (after the delay the server gives)
       queueTimeoutMs: 60000,                          // a command of the page that could not even be sent after this long is given up
@@ -61,6 +62,9 @@
     theme: { accent: 0x00aae4 },
 
     nextBlock: false,
+
+    // A ledger read in detail is 100 KB or more and the public servers meter their clients: only the newest ledgers around the camera (3 instead of 5)
+    detailRadius: 2,
 
     // ----- numbers -----
     capacity: { size: 2000 },                         // ledger objects touched by a ledger that fills the platform (see above)
