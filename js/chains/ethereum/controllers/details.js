@@ -44,6 +44,7 @@
 
   async function openTx(hash) {
     const token = begin();
+    Explorer.link.set(hash); // the address bar says what is shown (a link to it)
     Explorer.ui.detail.loading();
     try {
       const [tx, receipt] = await rpc().batch([['eth_getTransactionByHash', [hash]], ['eth_getTransactionReceipt', [hash]]]);
@@ -63,6 +64,7 @@
 
   async function openBlock(id) {
     const token = begin();
+    Explorer.link.set(id);
     Explorer.ui.detail.loading();
     try {
       const { block, rows } = await E.data.rowsOf({ id });
@@ -77,6 +79,7 @@
   /** checksumOk: false when the user typed the address with a wrong checksum (the page warns). */
   async function openAddress(address, ens = null, checksumOk = true) {
     const token = begin();
+    Explorer.link.set(ens ?? address);
     Explorer.ui.detail.loading();
     try {
       const [balance, nonce, code] = (await rpc().batch([

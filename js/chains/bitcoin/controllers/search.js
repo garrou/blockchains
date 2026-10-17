@@ -15,8 +15,8 @@
           try {
             if (kind === 'block') return await Explorer.nav.goToBlock({ hash: q.hash }, token);
             const tx = await Explorer.bitcoin.api.tx(q.hash);
-            if (Explorer.requests.isCurrent(token)) Explorer.ui.detail.tx(tx);
-            return;
+            Explorer.link.set(q.hash);
+            return await Explorer.bitcoin.details.showTx(tx, token, false);
           } catch (e) {
             if (e.status !== 404) throw e;
           }

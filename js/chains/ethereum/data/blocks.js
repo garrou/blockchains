@@ -88,6 +88,8 @@
 
   E.data = {
     latestBlocks, blocksFrom, heightOf, hashOf, blockTowers, rowsOf, notFound, hex,
+    /** The transactions of a block when they are already held (or on their way): a promise, or undefined. Never asks the node. */
+    cached: (b) => cache.get(b.id),
     // No REST list of the mempool exists: the feed comes from the WebSocket (data/live.js)
     recentTxs: async () => [],
   };

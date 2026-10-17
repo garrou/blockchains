@@ -37,6 +37,7 @@
     onFollow: nav.onFollow,
     onOrder: (mode) => Explorer.sceneSync.setOrder(mode),
     onPlacement: (mode) => Explorer.sceneSync.setPlacement(mode),
+    onColorBy: () => Explorer.sceneSync.recolor(),
     onDetails: () => state.selectedId && chain.openBlock(state.selectedId),
   });
   if (scene) {
@@ -53,7 +54,7 @@
   $('#search').addEventListener('submit', (e) => {
     e.preventDefault();
     const q = $('#q').value.trim();
-    if (q) chain.search(q);
+    if (q) { Explorer.link.set(q); chain.search(q); }
   });
 
   // ----- data sources -----
@@ -78,6 +79,7 @@
 
   nav.loadBlocks();
   chain.start({ scene }); // the chain's own screens and timers
+  Explorer.link.init((q) => chain.search(q)); // a link with #q=... opens that view once the blocks are there
   Explorer.feedCtl.poll();
   setInterval(Explorer.feedCtl.poll, Explorer.config.feed.pollMs);
   setInterval(Explorer.feedCtl.flush, Explorer.config.feed.flushMs);

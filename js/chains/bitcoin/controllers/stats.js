@@ -11,7 +11,9 @@
     running = true;
     last = Date.now();
     try {
-      const [hr, adj] = await Promise.allSettled([Explorer.bitcoin.api.hashrate3d(), Explorer.bitcoin.api.difficultyAdjustment()]);
+      const [hr, adj, fees] = await Promise.allSettled([Explorer.bitcoin.api.hashrate3d(), Explorer.bitcoin.api.difficultyAdjustment(), Explorer.bitcoin.api.fees()]);
+      if (fees.status === 'fulfilled') Explorer.ui.statsBar.renderFees(Explorer.bitcoin.stats.fromFees(fees.value));
+      else console.warn('fees', fees.reason);
       if (hr.status === 'fulfilled') Explorer.ui.statsBar.renderHashrate(Explorer.bitcoin.stats.fromHashrate(hr.value));
       else console.warn('hashrate', hr.reason);
       if (adj.status === 'fulfilled') Explorer.ui.statsBar.renderAdjustment(Explorer.bitcoin.stats.fromAdjustment(adj.value));

@@ -21,6 +21,18 @@
 
   const fill = (b) => (b.gasUsed || 0) / (b.gasLimit || 1);
 
+  // The groups of transactions, with the color of each: here because the legend below needs them while this file loads (core/txs.js
+  // says which group a transaction belongs to). The colors are used when the person colors the towers by kind instead of by price.
+  const KINDS = E.kinds = {
+    transfer: { label: 'ETH transfer', color: 0x4fb3f6 },
+    token: { label: 'Token', color: 0x6fe3d4 },
+    swap: { label: 'Swap / liquidity', color: 0xf7b955 },
+    nft: { label: 'NFT', color: 0xff6b9a },
+    call: { label: 'Contract call', color: 0xc77dff },
+    create: { label: 'Contract creation', color: 0x8bd450 },
+    blob: { label: 'Blob (rollup data)', color: 0xe5484d },
+  };
+
   Explorer.defineChain({
     id: 'ethereum',
     name: 'Ethereum',
@@ -36,6 +48,7 @@
       wsStaleMs: 60000,                               // a WebSocket that says nothing for this long is dropped and opened again
       pollMs: 6000,                                   // looking for a new block when the WebSocket is down
       projectMs: 1000,                                // the guess of the next block is refreshed at most this often
+      watch: { max: 200, pollMs: 2000 },              // the watched address: lines kept, and how often the mempool sample is looked through for its pending transactions
       pending: { fetchPerSec: 20, tickMs: 500 },      // pending transactions fetched per second (a sample of the mempool is enough)
       pool: { max: 4000, ttlMs: 20 * 60e3 },          // pending transactions kept, and how long
       stats: { refreshMs: 2000, finalityMs: 60000, dayMs: 600000, daySamples: 48 }, // the statistics bar: redrawn from the blocks held (cheap), finality asked of the node; the transactions of a day estimated every dayMs from daySamples blocks
@@ -55,6 +68,9 @@
       stops: [[0.01, 0x2b2f7a], [0.1, 0x3a4fc4], [0.3, 0x627eea], [1, 0x4fb3f6], [3, 0x6fe3d4], [10, 0xc4f0a0], [30, 0xffd166], [100, 0xff5c8a]],
       ticks: [0.01, 0.1, 1, 10, 100],
     },
+    // The towers are colored by price (the scale above) or, if the person chooses, by kind of transaction (this legend)
+    colorSwitch: true,
+    legend: { items: Object.values(KINDS).map(({ label, color }) => ({ label, color })) },
     fill,
     typicalRate: (b) => b.baseFee ?? undefined,
 
@@ -97,6 +113,8 @@
         t.valueWei > 0n ? `sends ${e.eth(t.valueWei, 5)}` : null,
         t.pending ? 'waiting in the mempool' : null,
       ];
+      const mine = E.watchCtl.entryOf(t.txid); // a tower of the watched address says what it did to its balance
+      if (mine) lines.push(`★ ${e.ethSigned(mine.net, 5)} for ${f.short(Explorer.state.wallet.address, 8, 6)}`);
       return lines.filter(Boolean).join('\n');
     },
 
@@ -106,7 +124,11 @@
       blocksFrom: (height) => E.data.blocksFrom(height),
       heightOf: (hash) => E.data.heightOf(hash),
       hashOf: (height) => E.data.hashOf(height),
-      blockTowers: (b) => E.data.blockTowers(b),
+      blockTowers: async (b) => {
+        const towers = await E.data.blockTowers(b);
+        if (Explorer.state.wallet) E.data.rowsOf(b).then(({ rows }) => E.watchCtl.scan(b, rows), () => {}); // the transactions of the watched address, as the scene reads the block
+        return towers;
+      },
       recentTxs: () => E.data.recentTxs(),
     },
 
@@ -123,12 +145,23 @@
     openTx: (hash) => E.details.openTx(hash),
     openBlock: (id) => E.details.openBlock(id),
     search: (text) => E.searchCtl.run(text),
-    onBlock: () => E.statsCtl.refresh(),
-    onVisible: () => { E.statsCtl.refresh(); E.statsCtl.refreshFinality(); },
+    onHighlight: () => E.watchCtl.onSceneChange(),    // the towers lit for the watched address may have changed
+    onBlock: (b) => { E.statsCtl.refresh(); E.watchCtl.onBlock(b); },
+    onVisible: () => { E.statsCtl.refresh(); E.statsCtl.refreshFinality(); E.watchCtl.catchUp(); },
 
-    start() {
+    start({ scene }) {
       const d = E.details;
-      Explorer.ui.detail.init({ onOpenTx: d.openTx, onOpenBlock: d.openBlock, onOpenAddress: d.openAddress });
+      Explorer.ui.detail.init({
+        onOpenTx: d.openTx, onOpenBlock: d.openBlock, onOpenAddress: d.openAddress,
+        onWatch: scene ? (address) => { E.watchCtl.track(address); Explorer.ui.dialog.close(); } : null, // light up what the page sees of the address in the 3D scene
+      });
+      if (scene) { // the panel of the watched address lives over the 3D view
+        E.watchCtl.setDim(Explorer.ui.tracker.init({
+          format: (e) => (e.net !== 0n ? EF().ethSigned(e.net, 5) : e.label),
+          onJump: E.watchCtl.jump, onOpenAddress: d.openAddress, onRefresh: E.watchCtl.refresh,
+          onClear: E.watchCtl.clear, onMore: () => {}, onDim: E.watchCtl.setDim,
+        }).dim);
+      }
       E.statsCtl.start();
     },
   });

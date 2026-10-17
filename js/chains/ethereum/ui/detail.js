@@ -60,7 +60,7 @@
   }
 
   Explorer.ui.detail = {
-    /** handlers: onOpenTx(hash), onOpenBlock(id), onOpenAddress(address) */
+    /** handlers: onOpenTx(hash), onOpenBlock(id), onOpenAddress(address), onWatch(address) (absent without 3D) */
     init(h) { handlers = h; },
     loading() { Explorer.ui.dialog.loading(); },
     message(text) { Explorer.ui.dialog.message(text); },
@@ -138,7 +138,10 @@
           price: x.weiToGwei(p.maxFee), gasLimit: p.gas, gasUsed: null, created: null,
         })))
         : null,
-      el('p', { class: 'muted' }, 'An Ethereum node does not list the transactions of an address (that takes an indexer such as Etherscan): this page shows what the node knows.'));
+      handlers.onWatch
+        ? el('button', { type: 'button', class: 'show3d', title: 'Light up the transactions of this address that the page sees (blocks it holds, new blocks, the mempool) in the 3D scene', onclick: () => handlers.onWatch(v.address) }, 'Watch in 3D')
+        : null,
+      el('p', { class: 'muted' }, 'An Ethereum node does not list the transactions of an address (that takes an indexer such as Etherscan): this page shows what the node knows. "Watch in 3D" follows the address from now on.'));
     },
   };
 })();

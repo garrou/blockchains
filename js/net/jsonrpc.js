@@ -19,14 +19,19 @@
         const i = (current + k) % list.length;
         const ctl = new AbortController();
         const timer = setTimeout(() => ctl.abort(), timeoutMs());
+        const t0 = Date.now();
         try {
           const res = await fetch(list[i], { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
           if (!res.ok) { const err = new Error(`${res.status} ${list[i]}`); err.status = res.status; throw err; }
           const json = await res.json();
           if (json == null || typeof json !== 'object') throw new Error(`not JSON-RPC ${list[i]}`);
           current = i;
+          Explorer.diag?.count('http.ok'); Explorer.diag?.gauge('http.node', `${list[i]} (${Date.now() - t0} ms)`);
           return json;
-        } catch (e) { last = e; } finally { clearTimeout(timer); }
+        } catch (e) {
+          last = e;
+          Explorer.diag?.count('http.failed'); Explorer.diag?.note('net', `${list[i]} failed after ${Date.now() - t0} ms: ${e.name === 'AbortError' ? 'timeout' : e.message}`);
+        } finally { clearTimeout(timer); }
       }
       throw last;
     }
@@ -107,6 +112,7 @@
     /** The connection is gone (closed, failed to open, or dropped): tell the chain, try the next node later. */
     function lost() {
       clearTimeout(watchdog);
+      Explorer.diag?.count('ws.lost'); Explorer.diag?.gauge('ws.state', 'down, next try in a moment'); Explorer.diag?.note('ws', 'connection lost');
       ws = null;
       try { onClose(); } catch (e) { console.warn('socket onClose', e); } // the reconnection must not depend on the chain's handler
       index++; // the next node, in case this one is the problem
@@ -131,7 +137,7 @@
         sock = new WebSocket(list[index % list.length]); // throws on a bad URL, or a ws:// URL on an https page
       } catch (e) { console.warn('socket', e); lost(); return; }
       ws = sock;
-      sock.onopen = () => { heard(); onOpen(ctl.send, ctl); };
+      sock.onopen = () => { heard(); Explorer.diag?.count('ws.open'); Explorer.diag?.gauge('ws.state', `open: ${sock.url}`); Explorer.diag?.note('ws', `open ${sock.url}`); onOpen(ctl.send, ctl); };
       sock.onmessage = (ev) => {
         heard();
         let msg;

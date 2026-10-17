@@ -47,7 +47,7 @@
   const dataSize = (a) => (a.data?.space != null ? a.data.space : Array.isArray(a.data) ? Math.floor((a.data[0].length * 3) / 4) : 0);
 
   Explorer.ui.detail = {
-    /** handlers: onOpenTx(signature), onOpenSlot(slot), onOpenAddress(address) */
+    /** handlers: onOpenTx(signature), onOpenSlot(slot), onOpenAddress(address), onWatch(address) (absent without 3D) */
     init(h) { handlers = h; },
     loading() { Explorer.ui.dialog.loading(); },
     message(text) { Explorer.ui.dialog.message(text); },
@@ -124,6 +124,9 @@
         parsed?.type === 'mint' ? ['Supply', `${x.units(BigInt(info.supply ?? 0), info.decimals ?? 0, 2)} (${info.decimals} decimals)`] : null,
       ]),
       el('h3', {}, v.history ? `Latest transactions (${v.history.length})` : 'Latest transactions'),
+      handlers.onWatch
+        ? el('button', { type: 'button', class: 'show3d', title: 'Light up the transactions of this address in the 3D scene, and follow them', onclick: () => handlers.onWatch(v.address) }, 'Watch in 3D')
+        : null,
       v.history && !v.history.length ? el('p', { class: 'muted' }, 'No transaction yet.') : null,
       v.history ? el('ul', { class: 'sol-history' }, v.history.map((h) => el('li', {},
         link(F.short(h.signature, 14, 8), () => handlers.onOpenTx(h.signature), ' mono'),

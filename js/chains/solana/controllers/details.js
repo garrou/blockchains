@@ -13,6 +13,7 @@
 
   async function openTx(signature) {
     const token = begin();
+    Explorer.link.set(signature); // the address bar says what is shown (a link to it)
     Explorer.ui.detail.loading();
     try {
       const tx = await S.rpc.transaction(signature);
@@ -31,6 +32,7 @@
     try {
       const b = S.data.lookup(id);
       if (!b) throw S.data.notFound('block');
+      Explorer.link.set(String(b.slot)); // a block is found by its slot, not by its hash
       const { rows } = await S.data.rowsOf(b);
       if (!wanted(token)) return;
       Explorer.ui.detail.block({ block: b, rows });
@@ -42,6 +44,7 @@
   /** Any slot, shown on the page or not. */
   async function openSlot(slot) {
     const token = begin();
+    Explorer.link.set(String(slot));
     Explorer.ui.detail.loading();
     try {
       const b = await S.data.blockAt(slot);
@@ -57,6 +60,7 @@
   /** An account: balance, owner program, what it holds, its latest transactions. */
   async function openAddress(address) {
     const token = begin();
+    Explorer.link.set(address);
     Explorer.ui.detail.loading();
     try {
       const [bal, info, sigs] = await S.rpc.batch([

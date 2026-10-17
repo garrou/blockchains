@@ -30,6 +30,7 @@
   }
 
   function renderRow(freshId = null) {
+    Explorer.diag?.gauge('blocks', `${state.blocks.length} held, tip ${state.tip}${state.detached ? ', detached' : ''}`);
     ui().blocksRow.renderBlocks(state.blocks, { selectedId: state.selectedId, freshId });
     updateMoreButton();
   }
@@ -45,6 +46,8 @@
     if (id === S.nextId && state.detached) { showLive(S.nextId); return; } // the next block belongs to the live chain
     state.focusId = id;
     state.selectedId = id === S.nextId ? null : id;
+    const shown = id === S.nextId ? null : state.blocks.find((b) => b.id === id);
+    if (!auto && shown) Explorer.link?.setCamera(String(Explorer.chain.blockNumber(shown)).replace(/\D/g, '')); // the block a person chose: a link to it
     sync().sync(); // the 3D window slides with the camera; the chain itself never moves, so the camera only glides along it
     sync().focus(id);
     ui().blocksRow.select(id);

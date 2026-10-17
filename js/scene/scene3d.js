@@ -299,7 +299,8 @@
     function streamInto(slot, items) {
       for (const it of items) {
         if (slot.stream.length >= MAX_STREAM) break;
-        const color = it.color != null ? colorOf(Explorer.colors.fromHex(it.color)) : it.rate != null ? colorOf(Explorer.colors.rate(it.rate)) : new THREE.Color(Explorer.colors.NEXT_BLOCK_HEX);
+        const rgb = it.rate != null || (it.color != null && Explorer.colors.mode === 'kind') ? Explorer.colors.of(it) : null;
+        const color = rgb ? colorOf(rgb) : new THREE.Color(Explorer.colors.NEXT_BLOCK_HEX);
         const side = 0.7 + Math.random() * 0.6;
         const t = it.rate != null && it.vsize > 1 ? Explorer.layout.nominalTower(it.vsize, it.rate) : { w: side, h: side, height: side };
         const mesh = fallingTower(color, t.w, t.height, t.h);
@@ -705,6 +706,13 @@
         for (const s of slots.values()) {
           if (!s.placer || !s.txs || !s.mesh) continue;
           s.placer.reset(); // 'stable' starts from a fresh layout ('compact' does not use it)
+          buildMesh(s, false, null);
+        }
+      },
+      // Change what the towers are colored by (price or kind: Explorer.colors.setMode): every displayed block is painted again in place.
+      recolor() {
+        for (const s of slots.values()) {
+          if (!s.txs || !s.mesh) continue;
           buildMesh(s, false, null);
         }
       },

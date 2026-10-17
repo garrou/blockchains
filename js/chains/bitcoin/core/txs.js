@@ -45,8 +45,25 @@
 
   const outputTotal = (tx) => tx.vout.reduce((s, o) => s + (o.value || 0), 0);
 
+  /** Whether a transaction says it can be replaced by a version that pays more (BIP 125: an input with a sequence below 0xfffffffe). */
+  const signalsRbf = (tx) => tx.vin.some((i) => !i.is_coinbase && typeof i.sequence === 'number' && i.sequence < 0xfffffffe);
+
+  /**
+   * When a transaction that pays `rate` sat/vB is expected to be mined, from the blocks the mempool is projected into (`upcoming`: the
+   * `mempool-blocks` of the server, each with the `feeRange` of what it holds, lowest rate first): the first block whose lowest rate
+   * it reaches. { blocks: n } (n = 1: the next block), { beyond: n } when it is below all the n blocks projected, null when unknown.
+   */
+  function eta(rate, upcoming) {
+    if (!Number.isFinite(rate) || !Array.isArray(upcoming) || !upcoming.length) return null;
+    for (let i = 0; i < upcoming.length; i++) {
+      const lowest = upcoming[i] && upcoming[i].feeRange && upcoming[i].feeRange[0];
+      if (typeof lowest === 'number' && rate >= lowest) return { blocks: i + 1 };
+    }
+    return { beyond: upcoming.length };
+  }
+
   /** Fee rate in sat/vB of a full tx (weight / 4 = vsize). */
   const fullFeeRate = (tx) => (tx.fee != null && tx.weight ? tx.fee / (tx.weight / 4) : null);
 
-  Explorer.bitcoin.txs = { feeRate, normalizeProjected, isCompleteSummary, fromSummary, provisional, inputTotal, outputTotal, fullFeeRate };
+  Explorer.bitcoin.txs = { signalsRbf, eta, feeRate, normalizeProjected, isCompleteSummary, fromSummary, provisional, inputTotal, outputTotal, fullFeeRate };
 })();

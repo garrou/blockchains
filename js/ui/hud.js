@@ -5,7 +5,7 @@
   const Explorer = (window.Explorer = window.Explorer || {});
   const { $, el } = Explorer.dom;
 
-  const ORDER_KEY = 'layoutOrder', PLACEMENT_KEY = 'layoutPlacement';
+  const ORDER_KEY = 'layoutOrder', PLACEMENT_KEY = 'layoutPlacement', COLOR_KEY = 'colorBy';
 
   /** A <select> whose choice is remembered between visits. Calls onChange(value) on a change; returns the value to start with. */
   function rememberedSelect(selector, key, onChange) {
@@ -21,10 +21,21 @@
     return select.value;
   }
 
-  /** The fee scale legend: gradient and ticks come from the very stops the towers are colored with (the chain's rates). */
+  /**
+   * The legend of what the towers are colored by: the fee scale (gradient and ticks come from the very stops the towers are colored with:
+   * the chain's rates) or, for colors by kind, a swatch for each kind. A chain can switch between the two (chain.colorSwitch).
+   */
   function renderLegend() {
+    const hint = $('#color-hint'); // "height & color = price": by kind, the color no longer says the price
+    if (hint) {
+      hint.dataset.price ??= hint.textContent;
+      hint.textContent = Explorer.colors.mode === 'kind' ? `${hint.dataset.price.replace(/^height & color/, 'height')} · color = kind` : hint.dataset.price;
+    }
     const legend = Explorer.chain.legend;
-    if (legend) return renderCategories(legend);
+    if (legend && Explorer.colors.mode === 'kind') return renderCategories(legend);
+    const scale = $('.legend-scale');
+    scale.classList.remove('categories');
+    scale.replaceChildren(el('i', { id: 'legend-bar' }), el('span', { id: 'legend-ticks' }));
     const C = Explorer.colors, rates = Explorer.chain.rates, label = rates.label ?? String, at = (r) => `${(C.position(r) * 100).toFixed(1)}%`;
     const css = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
     $('#legend-bar').style.background = `linear-gradient(90deg, ${C.stops.map((s) => `${css(s.hex)} ${at(s.rate)}`).join(', ')})`;
@@ -44,10 +55,14 @@
 
   Explorer.ui.hud = {
     /**
-     * handlers: onFollow(bool), onOrder(mode), onPlacement(mode), onDetails().
+     * handlers: onFollow(bool), onOrder(mode), onPlacement(mode), onColorBy(mode), onDetails().
      * Returns {order, placement}: the layout choices to start with (the remembered ones, if any).
      */
     init(handlers) {
+      if (Explorer.chain.colorSwitch && $('#colorby')) { // price or kind: the colors are decided before anything is drawn
+        const apply = (mode) => { if (Explorer.colors.setMode(mode)) renderLegend(); };
+        apply(rememberedSelect('#colorby', COLOR_KEY, (mode) => { apply(mode); handlers.onColorBy?.(mode); }));
+      }
       renderLegend();
       const order = rememberedSelect('#order', ORDER_KEY, handlers.onOrder);
       const placement = rememberedSelect('#placement', PLACEMENT_KEY, handlers.onPlacement);

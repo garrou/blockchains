@@ -53,7 +53,7 @@
 
   /** The tower of a transaction. */
   function towerOf(r) {
-    return { txid: r.sig, vsize: r.cu, estimated: r.estimated, rate: r.rate, fee: r.fee, priority: r.priority, kind: r.kind, label: r.label, ok: r.ok, payer: r.payer, moved: r.moved };
+    return { txid: r.sig, vsize: r.cu, estimated: r.estimated, rate: r.rate, fee: r.fee, priority: r.priority, kind: r.kind, label: r.label, ok: r.ok, payer: r.payer, moved: r.moved, color: S.kinds[r.kind].color };
   }
 
   /** A line of the feed: the tower already has everything the row needs. */

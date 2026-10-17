@@ -1128,6 +1128,12 @@ button:focus-visible:hover {
   color: var(--muted);
 }
 
+.w-empty {
+  padding: .5rem .25rem;
+  font-size: .75rem;
+  color: var(--muted);
+}
+
 .w-body {
   display: flex;
   flex-direction: column;
@@ -1452,4 +1458,75 @@ body.home h1 {
 .show3d:hover {
   border-color: var(--mine);
   background: color-mix(in srgb, var(--mine) 14%, var(--panel));
+}
+
+/* ---------- diagnostics panel (?debug) ---------- */
+
+.diag {
+  position: fixed;
+  right: .75rem;
+  bottom: .75rem;
+  z-index: 50;
+  width: min(420px, calc(100vw - 1.5rem));
+  max-height: 55vh;
+  overflow: auto;
+  padding: .6rem .75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0b0d14ee;
+  font: .72rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+}
+
+.diag .dg-head {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .4rem;
+}
+
+.diag .dg-head b {
+  margin-right: auto;
+}
+
+.diag button {
+  padding: .1rem .5rem;
+  font: inherit;
+}
+
+.diag .dg-count {
+  margin: .4rem 0;
+}
+
+.diag .dg-events div {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+.diag .dg-error {
+  color: var(--bad);
+}
+
+.diag .dg-warn {
+  color: #e8b44d;
+}
+
+/* ---------- link to the view (dialog) ---------- */
+
+#copylink {
+  position: absolute;
+  top: .6rem;
+  right: 3.4rem;
+  z-index: 6;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+#copylink[hidden] {
+  display: none;
 }

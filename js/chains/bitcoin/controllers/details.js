@@ -14,12 +14,21 @@
   /** What the dialog says when a request failed: "not found" only for a 404, the reason otherwise (network, rate limit...). */
   const failure = (what, e) => (e.status === 404 ? `${what} not found` : `Could not load the ${what.toLowerCase()} (${e.message})`);
 
+  /**
+   * The page of a transaction already read. An unconfirmed one also has a family (CPFP): asked now, but not waited for long.
+   * token: the request it belongs to; opened: whether the dialog is already open (a search opens it with the answer).
+   */
+  async function showTx(tx, token, opened = true) {
+    const cpfp = tx.status.confirmed ? null : await Promise.race([Explorer.bitcoin.api.cpfp(tx.txid).catch(() => null), new Promise((r) => setTimeout(() => r(null), 3000))]);
+    if (opened ? wanted(token) : isCurrent(token)) Explorer.ui.detail.tx(tx, { upcoming: Explorer.state.upcoming, cpfp });
+  }
+
   async function openTx(txid) {
     const token = begin();
+    Explorer.link.set(txid); // the address bar says what is shown (a link to it)
     Explorer.ui.detail.loading();
     try {
-      const tx = await Explorer.bitcoin.api.tx(txid);
-      if (wanted(token)) Explorer.ui.detail.tx(tx);
+      await showTx(await Explorer.bitcoin.api.tx(txid), token);
     } catch (e) {
       if (wanted(token)) Explorer.ui.detail.message(failure('Transaction', e));
     }
@@ -27,6 +36,7 @@
 
   async function openBlock(hash) {
     const token = begin();
+    Explorer.link.set(hash);
     Explorer.ui.detail.loading();
     try {
       // /v1/block carries the mining "extras" (pool, median fee, total fees) that /block lacks;
@@ -45,6 +55,7 @@
 
   async function openAddress(address) {
     const token = begin();
+    Explorer.link.set(address);
     shown = null;
     Explorer.ui.detail.loading();
     // the totals and the transactions are separate requests: a very active address can fail on the list but still have totals
@@ -83,5 +94,5 @@
   /** The address page that is open: { address, summary, txs } (null when the dialog shows something else, or the list failed). */
   const shownAddress = () => (shown && wanted(shown.token) ? shown : null);
 
-  Explorer.bitcoin.details = { openTx, openBlock, openAddress, moreAddressTxs, shownAddress };
+  Explorer.bitcoin.details = { showTx, openTx, openBlock, openAddress, moreAddressTxs, shownAddress };
 })();

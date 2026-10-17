@@ -24,9 +24,10 @@
   function pendingNote(e) {
     if (!sync().hasProjection()) return 'checking the next block…';
     if (sync().isProjected(e.txid)) return 'in the next block';
-    const lowest = state.upcoming[0]?.feeRange?.[0];
+    const lowest = state.upcoming[0]?.feeRange?.[0], eta = Explorer.bitcoin.txs.eta(e.rate, state.upcoming);
+    const when = eta && eta.blocks ? `about ${eta.blocks} blocks` : eta && eta.beyond ? `more than ${eta.beyond} blocks` : null;
     return e.rate != null && lowest != null && e.rate < lowest
-      ? `not in the next block: it takes at least ${F.rate(lowest)} sat/vB, this one pays ${F.rate(e.rate)}`
+      ? `not in the next block: it takes at least ${F.rate(lowest)} sat/vB, this one pays ${F.rate(e.rate)}${when ? ` · expected in ${when}` : ''}`
       : 'not in the next block yet';
   }
 

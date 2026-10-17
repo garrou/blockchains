@@ -44,6 +44,11 @@
         <small id="st-adj-sub">&nbsp;</small>
         <i class="bar"><u id="st-adj-bar"></u></i>
       </div>
+      <div class="stat" title="What to pay per virtual byte to be mined in the next block, within 30 minutes, within an hour, or whenever (the server's recommendation)">
+        <span class="k">Fees to pay now</span>
+        <b id="st-fees">—</b>
+        <small id="st-fees-sub">&nbsp;</small>
+      </div>
       <div class="stat" id="st-power-box">
         <span class="k">Estimated power</span>
         <b id="st-power">—</b>
@@ -152,6 +157,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
   <!-- pure logic: no DOM, no network -->
   <script defer src="js/core/config.js"></script>
+  <script defer src="js/core/diag.js"></script>
   <!-- the chain the page works with: its numbers and words, read by the engine files below (js/core/chain.js is the contract) -->
   <script defer src="js/core/chain.js"></script>
   <script defer src="js/chains/bitcoin/chain.js"></script>
@@ -180,6 +186,7 @@
   <script defer src="js/ui/blocks-row.js"></script>
   <script defer src="js/ui/hud.js"></script>
   <script defer src="js/ui/dialog.js"></script>
+  <script defer src="js/ui/diag.js"></script>
   <script defer src="js/ui/tracker.js"></script>
   <script defer src="js/chains/bitcoin/ui/detail.js"></script>
   <script defer src="js/ui/feed.js"></script>
@@ -187,6 +194,7 @@
   <!-- orchestration -->
   <script defer src="js/controllers/scene-sync.js"></script>
   <script defer src="js/controllers/requests.js"></script>
+  <script defer src="js/controllers/links.js"></script>
   <script defer src="js/controllers/navigation.js"></script>
   <script defer src="js/chains/bitcoin/controllers/details.js"></script>
   <script defer src="js/chains/bitcoin/controllers/search.js"></script>

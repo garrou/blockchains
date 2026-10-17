@@ -225,6 +225,8 @@
     txCount: (id) => (scene ? scene.txCount(id) : 0),
     stream(items) { if (scene && items.length) scene.stream(items); },
     setOrder(mode) { if (scene) scene.setOrder(mode); },
+    /** The towers are colored by another thing (Explorer.colors.setMode): paint them again. */
+    recolor() { if (scene) scene.recolor(); },
     setPlacement(mode) { if (scene) scene.setPlacement(mode); },
   };
 })();

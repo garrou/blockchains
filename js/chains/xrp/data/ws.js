@@ -42,8 +42,11 @@
     }, e.priority === 0 ? cfg().userQueueTimeoutMs : cfg().queueTimeoutMs);
   }
 
+  const report = () => Explorer.diag?.gauge('xrp.commands', `${inFlight} out, ${queue.length} waiting${pausedUntil > Date.now() ? `, paused ${Math.ceil((pausedUntil - Date.now()) / 1000)} s` : ''}`);
+
   /** Sends what can be sent: at most `maxInFlight` commands at a time, none while the server asked for a pause. */
   function pump() {
+    report();
     clearTimeout(pumpTimer);
     if (!open || !ctl) return;
     const wait = pausedUntil - Date.now();
@@ -51,6 +54,7 @@
     while (inFlight < cfg().maxInFlight && queue.length) {
       const e = queue[0];
       if (!ctl.send(e.msg)) return; // the socket is closing: the command stays in the queue for the next connection
+      Explorer.diag?.count(`xrp.sent.${e.msg.command}`);
       queue.shift();
       clearTimeout(e.queueTimer);
       e.sent = e.counted = true;
@@ -123,6 +127,7 @@
       if (isBusy(msg) && e.msg.command && e.retries < cfg().maxRetries) {
         // the server's budget is spent: wait as long as it says, then ask again (nothing is sent in between)
         requeue(e);
+        Explorer.diag?.count('xrp.tooBusy'); Explorer.diag?.note('ws', `${e.msg.command} refused: ${msg.error_message ?? msg.error}`);
         pausedUntil = Math.max(pausedUntil, Date.now() + retryDelay(msg));
         busyListeners.forEach((cb) => cb(Math.ceil((pausedUntil - Date.now()) / 1000)));
         pump();

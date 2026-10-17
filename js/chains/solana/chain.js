@@ -19,6 +19,17 @@
   const F = () => Explorer.format;
   const X = () => S.format;
 
+  // The kinds of transaction (core/programs.js says which one a transaction is), with the color of each: here because the legend below
+  // needs them while this file loads. The colors are used when the person colors the towers by kind instead of by priority fee.
+  const KINDS = S.kinds = {
+    vote: { label: 'Validator vote', color: 0x6b7280 },
+    transfer: { label: 'SOL transfer', color: 0x14f195 },
+    token: { label: 'Token transfer', color: 0x00c2ff },
+    swap: { label: 'Swap', color: 0xf7b955 },
+    stake: { label: 'Staking', color: 0xc77dff },
+    program: { label: 'Program call', color: 0xff6b9a },
+  };
+
   Explorer.defineChain({
     id: 'solana',
     name: 'Solana',
@@ -38,6 +49,7 @@
       pollMs: 5000,                                   // looking at the head slot when the WebSocket is down
       feedPerBlock: 12,                               // transactions of each new block that go to the feed
       stats: { refreshMs: 15000, localMs: 2000, dayMs: 600000 }, // the statistics bar: asked of the node / redrawn from what is held; the transactions of a day recounted every dayMs
+      watch: { pageSize: 25, pollLimit: 100, pollMs: 6000, max: 300 }, // the watched address: lines per page, per reload (more than that at once starts the list again), time between reloads, lines kept
       historyShown: 12,                               // transactions listed on an address page
       logLines: 40,                                   // lines of the program log shown on a transaction page
     },
@@ -58,6 +70,9 @@
       ticks: [100, 1e3, 1e4, 1e5, 1e6, 1e7],
       label: (r) => X().price(r),
     },
+    // The towers are colored by priority fee (the scale above) or, if the person chooses, by kind of transaction (this legend)
+    colorSwitch: true,
+    legend: { items: Object.values(KINDS).map(({ label, color }) => ({ label, color })) },
     fill: (b) => S.blocks.fill(b),
     typicalRate: () => undefined,
 
@@ -86,6 +101,7 @@
         `fee ${x.sol(t.fee, 6)}${t.priority > 0 ? ` · ${x.price(t.priority)} lamports priority` : ' · no priority fee'}`,
         `≈ ${x.cu(t.vsize)} compute units (estimated)`,
         t.moved > 0 ? `moves ${x.sol(t.moved, 5)}` : null,
+        S.watchCtl.entryOf(t.txid) ? `★ a transaction of ${f.short(Explorer.state.wallet.address, 8, 6)}` : null, // a tower of the watched address
       ];
       return lines.filter(Boolean).join('\n');
     },
@@ -109,12 +125,23 @@
     openTx: (sig) => S.details.openTx(sig),
     openBlock: (id) => S.details.openBlock(id),
     search: (text) => S.searchCtl.run(text),
-    onBlock: () => S.statsCtl.refreshLocal(),
-    onVisible: () => { S.statsCtl.refreshLocal(); S.statsCtl.refresh(); },
+    onHighlight: () => S.watchCtl.onSceneChange(),    // the towers lit for the watched address may have changed
+    onBlock: () => { S.statsCtl.refreshLocal(); S.watchCtl.onBlock(); },
+    onVisible: () => { S.statsCtl.refreshLocal(); S.statsCtl.refresh(); S.watchCtl.catchUp(); },
 
-    start() {
+    start({ scene }) {
       const d = S.details;
-      Explorer.ui.detail.init({ onOpenTx: d.openTx, onOpenSlot: d.openSlot, onOpenAddress: d.openAddress });
+      Explorer.ui.detail.init({
+        onOpenTx: d.openTx, onOpenSlot: d.openSlot, onOpenAddress: d.openAddress,
+        onWatch: scene ? (address) => { S.watchCtl.track(address); Explorer.ui.dialog.close(); } : null, // light up the transactions of the address in the 3D scene
+      });
+      if (scene) { // the panel of the watched address lives over the 3D view
+        S.watchCtl.setDim(Explorer.ui.tracker.init({
+          format: (e) => (e.ok ? '' : 'failed'),
+          onJump: S.watchCtl.jump, onOpenAddress: d.openAddress, onRefresh: S.watchCtl.refresh,
+          onClear: S.watchCtl.clear, onMore: S.watchCtl.loadOlder, onDim: S.watchCtl.setDim,
+        }).dim);
+      }
       S.statsCtl.start();
     },
   });

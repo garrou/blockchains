@@ -34,8 +34,22 @@
     ? (r) => 0.6 + 12 * position(r)
     : (r) => 0.6 + 12 * (Math.log(1 + Math.min(r, MAX_RATE)) / Math.log(1 + MAX_RATE));
 
+  // What a tower is colored by: 'price' (its rate, on the scale) or 'kind' (the `color` the chain gave it, see chain.legend). A chain with
+  // a legend and no switch (XRP) is always by kind; one with `colorSwitch` (Ethereum, Solana) starts by price and the person may change it.
+  const chain = Explorer.chain;
+  let mode = chain.legend && !chain.colorSwitch ? 'kind' : 'price';
+
   Explorer.colors = {
     rate,
+    get mode() { return mode; },
+    /** 'price' | 'kind'. Only a chain with `colorSwitch` can change it. Returns whether it changed. */
+    setMode(m) {
+      if (!chain.colorSwitch || (m !== 'price' && m !== 'kind') || m === mode) return false;
+      mode = m;
+      return true;
+    },
+    /** The color of a tower of this chain: its kind's when the colors are by kind and it has one, its rate's otherwise. */
+    of(x) { return x.color != null && mode === 'kind' ? this.fromHex(x.color) : rate(x.rate); },
     fromHex: (hex) => rgb(hex).map((c) => c * 1.1), // a color the chain chose for a tower (see `color` in core/chain.js), as bright as the scale's
     towerHeight,
     position,

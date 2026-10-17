@@ -72,6 +72,8 @@
   //   legend                       { items: [{ label, color: 0xRRGGBB }], note }: the colors of the towers are kinds, not rates
   //                                (a chain with no price to color by). The tower then carries its own `color`; its
   //                                `rate` still gives its height. The legend shows a swatch for each kind instead of the gradient
+  //   colorSwitch                  true (needs `legend`): the towers are colored by rate at first, and the page offers to color them by kind
+  //                                instead (the `color` of each tower, the swatches of `legend`). Without it, a chain with a legend is always by kind
   //   blockNumber(block)           how the number of a block reads ("21,500,000"). Default: its height, with thousands separators.
   //                                A chain whose engine height is not the number people know (Solana: a block is a slot) says it here
   const DEFAULTS = {
@@ -91,7 +93,7 @@
   // The optional parts have a type too, when a chain gives them: [path, expected typeof]
   const OPTIONAL = [['theme.accent', 'number'], ['nextBlock', 'boolean'], ['blockNumber', 'function'], ['openTx', 'function'], ['openBlock', 'function'],
     ['search', 'function'], ['onBlock', 'function'], ['onVisible', 'function'], ['onHighlight', 'function'], ['start', 'function'],
-    ['rates.label', 'function'], ['rates.heightScale', 'string'], ['legend', 'object']];
+    ['rates.label', 'function'], ['rates.heightScale', 'string'], ['legend', 'object'], ['colorSwitch', 'boolean']];
 
   const get = (obj, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 
@@ -116,6 +118,7 @@
       && legend.items.every((it) => it && typeof it.label === 'string' && typeof it.color === 'number') && (legend.note === undefined || typeof legend.note === 'string'))) {
       problems.push('  - legend: { items: [{ label: string, color: 0xRRGGBB }, ...] (at least one), note?: string }');
     }
+    if (spec.colorSwitch && spec.legend === undefined) problems.push('  - colorSwitch needs a legend (the colors of the kinds)');
     const stops = spec.rates && spec.rates.stops;
     if (Array.isArray(stops)) {
       const wellFormed = stops.every((s) => Array.isArray(s) && typeof s[0] === 'number' && typeof s[1] === 'number');

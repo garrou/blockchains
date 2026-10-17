@@ -57,6 +57,13 @@
     return SELECTORS[selector]?.[1] ?? (selector ? `Contract call (${selector})` : 'Contract call');
   }
 
+  /** The group of a transaction for the colors of the towers (E.kinds, in chain.js): its kind, and for a contract call what the function says it is. */
+  function groupOf(kind, selector) {
+    if (kind !== 'call') return kind;
+    const what = SELECTORS[selector]?.[1] ?? '';
+    return /^Swap|liquidity/i.test(what) ? 'swap' : /^Token/.test(what) ? 'token' : /^NFT/.test(what) ? 'nft' : 'call';
+  }
+
   const TYPE_NAMES = { 0: 'Legacy', 1: 'Access list (EIP-2930)', 2: 'EIP-1559', 3: 'Blob (EIP-4844)', 4: 'Set code (EIP-7702)' };
 
   /** What one gas costs a transaction (wei) in a block with that base fee: the base fee plus the tip it offers, capped by its max fee. */
@@ -116,6 +123,7 @@
     return {
       txid: r.hash, vsize: r.gasUsed ?? r.gasLimit, rate: r.price,
       from: r.from, to: r.to, valueWei: r.valueWei, feeWei: feeWei(r), kind: r.kind, selector: r.selector, ok: r.ok,
+      color: E.kinds[groupOf(r.kind, r.selector)].color,
     };
   }
 
@@ -146,15 +154,15 @@
     return {
       txid: p.hash, vsize: p.gas, rate: weiToGwei(wei), fee: weiToGwei(wei) * p.gas, // fee / vsize = the price in gwei, as in a feed item
       from: p.from, to: p.to, valueWei: p.valueWei, feeWei: wei * BigInt(p.gas), kind: p.kind, selector: p.selector, ok: null,
-      approx: false, pending: true,
+      approx: false, pending: true, color: E.kinds[groupOf(p.kind, p.selector)].color,
     };
   }
 
   /** The line of the live feed for a pending transaction ({ txid, fee, vsize, valueWei }: fee / vsize is the price in gwei). */
   function feedItem(p, baseWei) {
     const gwei = weiToGwei(pendingPrice(p, baseWei) ?? p.maxFee);
-    return { txid: p.hash, vsize: p.gas, fee: gwei * p.gas, valueWei: p.valueWei };
+    return { txid: p.hash, vsize: p.gas, fee: gwei * p.gas, valueWei: p.valueWei, color: E.kinds[groupOf(p.kind, p.selector)].color };
   }
 
-  E.txs = { SELECTORS, TYPE_NAMES, selectorOf, kindOf, labelOf, effectivePrice, row, estimateGas, feeWei, towerOf, pending, pendingPrice, pendingTower, feedItem };
+  E.txs = { SELECTORS, TYPE_NAMES, selectorOf, kindOf, groupOf, labelOf, effectivePrice, row, estimateGas, feeWei, towerOf, pending, pendingPrice, pendingTower, feedItem };
 })();

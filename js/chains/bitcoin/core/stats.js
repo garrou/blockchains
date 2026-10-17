@@ -28,6 +28,11 @@
     };
   }
 
+  /** /v1/fees/recommended -> { next, half, hour, economy } in sat/vB (null when unknown). */
+  function fromFees(f) {
+    return { next: num(f.fastestFee), half: num(f.halfHourFee), hour: num(f.hourFee), economy: num(f.economyFee) };
+  }
+
   /**
    * The transactions of the last 24 hours, from the blocks (newest first, with `timestamp` and `tx_count`): the sum over the blocks
    * mined in the last 86,400 s before `nowSec`. complete: false when the blocks do not reach back a whole day (the figure is then low).
@@ -37,5 +42,5 @@
     return { count: day.reduce((s, b) => s + (b.tx_count || 0), 0), blocks: day.length, complete: blocks.some((b) => b.timestamp <= since) };
   }
 
-  Explorer.bitcoin.stats = { fromHashrate, fromAdjustment, txPerDay };
+  Explorer.bitcoin.stats = { fromHashrate, fromAdjustment, fromFees, txPerDay };
 })();

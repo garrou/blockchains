@@ -19,8 +19,8 @@
       el('button', { type: 'button', class: `w-row${e.pending ? ' pending' : ''}${lit ? ' lit' : ''}`, 'data-txid': e.txid, title: e.txid, onclick: () => handlers.onJump(e) },
         el('i', { class: 'w-dot' }),
         el('span', { class: 'w-what' },
-          el('b', {}, e.pending ? 'Pending' : `#${F.number(e.height)}`),
-          el('small', {}, e.pending ? note ?? '' : F.ago(e.time))),
+          el('b', {}, e.pending ? 'Pending' : e.where ?? `#${F.number(e.height)}`),
+          el('small', {}, e.pending ? note ?? '' : e.time != null ? F.ago(e.time) : '')),
         el('span', { class: `amt ${e.net < 0 ? 'down' : 'up'}` }, formatAmount(e))));
   }
 
@@ -61,16 +61,16 @@
     },
 
     /**
-     * m: { address, entries (core/wallet.entries), lit: Set of the txids whose tower is drawn, notes: Map txid -> what a
+     * m: { address, entries (core/wallet.entries; an entry may say `where` instead of the block number, and have no `time`), lit: Set of the txids whose tower is drawn, notes: Map txid -> what a
      * pending transaction waits for, reach: lowest block loaded, more: older ones can be loaded (moreLabel: what the button
-     * says, default "Load older"), busy, failed, dim }.
+     * says, default "Load older"), busy, failed, dim, empty (what the panel says when there is nothing to list yet) }.
      */
     render(m) {
       shown = { address: m.address, count: m.entries.length, reach: m.reach, failed: m.failed };
       $('#wallet').hidden = false;
       $('#wallet-address').textContent = F.short(m.address, 10, 6);
       $('#wallet-address').title = `${m.address}\nClick for the details of this address`;
-      $('#wallet-list').replaceChildren(...m.entries.map((e) => line(e, m.lit.has(e.txid), m.notes.get(e.txid))));
+      $('#wallet-list').replaceChildren(...(m.entries.length || !m.empty ? m.entries.map((e) => line(e, m.lit.has(e.txid), m.notes.get(e.txid))) : [el('li', { class: 'w-empty' }, m.empty)]));
       $('#wallet-more').hidden = !m.more;
       $('#wallet-more').textContent = m.moreLabel ?? 'Load older';
       Explorer.ui.tracker.setBusy(m.busy);

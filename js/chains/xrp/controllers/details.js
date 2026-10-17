@@ -33,6 +33,7 @@
 
   async function openTx(hash) {
     const token = begin();
+    Explorer.link.set(hash); // the address bar says what is shown (a link to it)
     Explorer.ui.detail.loading();
     try {
       const res = await whileBusy(token, () => askTx(hash));
@@ -46,6 +47,7 @@
   /** A hash typed in the search box: a transaction, or else a ledger (the same 64 digits). The scene goes to a ledger when it can. */
   async function openHash(hash) {
     const token = begin();
+    Explorer.link.set(hash);
     Explorer.ui.detail.loading();
     try {
       let res;
@@ -66,6 +68,7 @@
   /** A ledger by its hash (the one the page may already hold), or by its index (any ledger the server still has). */
   async function openLedger(which) {
     const token = begin();
+    Explorer.link.set(String(which));
     Explorer.ui.detail.loading();
     try {
       let block, rows;
@@ -87,6 +90,7 @@
   /** An account: balance, what it owns, its latest transactions. */
   async function openAddress(address) {
     const token = begin();
+    Explorer.link.set(address);
     Explorer.ui.detail.loading();
     shown = null;
     try {

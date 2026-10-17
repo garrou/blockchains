@@ -20,8 +20,8 @@ js/
     chain.js     THE CONTRACT: what a chain must provide (Explorer.defineChain)
   state/         the single mutable state of the app
   scene/         the 3D view (Three.js): rendering only
-  ui/            DOM views of the engine (block row, HUD, feed, dialog shell)
-  controllers/   orchestration (navigation, scene-sync, feed, "latest request wins")
+  ui/            DOM views of the engine (block row, HUD, feed, dialog shell, tracked-address panel, diagnostics panel)
+  controllers/   orchestration (navigation, scene-sync, feed, "latest request wins", links: the address bar)
   net/           JSON-RPC over HTTP and WebSocket (shared by the chains that speak it: nodes tried in turn, batches, reconnection)
   app.js         entry point: creates the views and the scene, connects the chain, wires everything
   chains/<name>/ (bitcoin, ethereum, solana, xrp: the same four folders, each file is that chain's own)
@@ -29,7 +29,7 @@ js/
     core/        pure logic of the chain (transactions, addresses, search classification...), no DOM, no network
     data/        where the data comes from (Bitcoin: mempool.space; Ethereum, Solana: a node, over JSON-RPC)
     ui/          the chain's screens (detail dialog content, statistics bar)
-    controllers/ the chain's orchestration (detail requests, search, statistics; Bitcoin: tracked address)
+    controllers/ the chain's orchestration (detail requests, search, statistics, tracked or watched address)
 css/             style.css (shared by every page, home page included), bitcoin.css, ethereum.css, solana.css, xrp.css (what only that chain's page needs)
 index.html                                   home: the choice of a chain
 bitcoin.html  ethereum.html  solana.html  xrp.html     one page per chain: same engine scripts, the chain's own scripts
@@ -91,7 +91,7 @@ Provisional data: if a mined block's towers are not known precisely yet (`approx
 | data | mempool.space REST + WebSocket | a node: JSON-RPC + WebSocket (`eth_subscribe`) | a node: JSON-RPC + WebSocket (`slotSubscribe`) | a server: **one WebSocket** for the commands and the ledgers that close (`subscribe` to `ledger`) |
 | accent | orange | Ethereum blue | Solana purple (the scale ends in the logo's green) | XRP blue |
 | address page | totals + transactions | balance, nonce, contract or wallet, token name, ENS | balance, owner program, token holdings, latest transactions | balance, objects owned, latest transactions, "Show in 3D" |
-| tracked address in 3D ("Show in 3D") | yes | **no** | **no** | yes (`account_tx`: validated transactions, a page at a time) |
+| tracked address in 3D | "Show in 3D": the full history | "Watch in 3D": **from now on** (what the page sees) | "Watch in 3D": `getSignaturesForAddress`, no amounts | "Show in 3D": `account_tx`, validated transactions, a page at a time |
 
 The statistics bar of each chain ends with **Transactions / day**. How it is counted depends on what the chain lets a page read:
 
@@ -102,10 +102,15 @@ The statistics bar of each chain ends with **Transactions / day**. How it is cou
 | Solana | `getRecentPerformanceSamples`: the node keeps about 12 hours of one-minute samples; the rate over them, scaled to 24 h. The figure leaves the votes out when the node tells them apart (`numNonVoteTransactions`) | an extrapolation of 12 hours |
 | XRP Ledger | `ledger` for 36 ledgers spread over the last ~21,600, scaled to the day | an estimate, a few percent |
 
-Why no tracked address on Ethereum and Solana. On Bitcoin the page lights up the towers of an address: it can, because the
-mempool.space API lists every transaction of an address. A plain Ethereum node cannot (it takes an indexer such as Etherscan,
-which needs a key). A Solana node does list the signatures of an address, but the page only draws one block in ten, so most of
-the transactions of an address would never be in a drawn block: lighting them up would show nothing.
+Tracking an address in 3D differs with what the chain lets a page read. On Bitcoin the page lights up the towers of an address from its whole
+history: the mempool.space API lists every transaction of an address. On Ethereum a plain node cannot (it takes an indexer such as Etherscan, which
+needs a key), so the page **watches** instead: `controllers/watch.js` scans the blocks it holds when the watch starts (the cache of `data/blocks.js`),
+every block that comes in, and the pending transactions of the mempool sample (every 2 s), and keeps the ones that name the address as sender or
+recipient (`core/watch.js`). It never goes back in time, does not see movements inside contracts or tokens, and the panel says how far it looks
+(`back to #...`). A Solana node does list the signatures of an address (`getSignaturesForAddress`, newest first, `before`/`until`), so its watch
+has a history and is reloaded with `until` the newest line, but it does not say what a transaction moved, and the page draws one block in ten:
+the towers of the other slots cannot glow, the panel says how many do (`N lit in 3D`). Both reuse the panel of `ui/tracker.js` (a line may say
+`where` instead of the block number, and the panel says `empty` when there is nothing yet).
 
 What is Ethereum-specific and worth knowing: the base fee of the next block is computed from the last block (EIP-1559, `core/blocks.js`);
 the gas a transaction really used comes from the receipts (`eth_getBlockReceipts`), estimated from the gas limits when a node
@@ -140,8 +145,27 @@ and while the server asks to wait the dialog says so.
 A command that was on its way when the connection dropped is asked again on the next one (they are all reads), and the start-up shares
 one read of the latest ledgers instead of making two. The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
 
+What is Bitcoin-specific beyond the towers: the fee card (`Fees to pay now`, `core/stats.js` `fromFees`) reads `/v1/fees/recommended` and says what
+the next block, half an hour and an hour cost for a typical transaction; the page of a transaction that is not mined yet says whether it can be replaced
+(BIP125: `signalsRbf` in `core/txs.js`), when it is expected (`eta`: the position of its fee rate in the projected blocks, one block per ~10 minutes) and,
+from `/v1/cpfp/<txid>`, the family it is bundled with (child-pays-for-parent).
+
 Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit, and their operators see
 the IP address of the visitor and the addresses and transactions he looks up. Use your own node by changing those lists.
+
+## Features of the engine that every chain gets
+
+- **Links** (`controllers/links.js`): the address bar says what is shown (`#q=<what you would type in the search box>`): a block the camera
+  is on, or the transaction / block / address of the dialog. Back and Forward close and reopen dialogs (each chain's `details.js` calls
+  `Explorer.link.set(...)`), a link pasted into the address bar is opened once the page has loaded (`chain.search`), and the dialog has a
+  "Copy link" button. Nothing to provide: a chain gets it by having `search`.
+- **Color by price or by kind**: `Explorer.colors.mode` is `'price'` (the color of the rate) or `'kind'` (the `color` of the tower, the swatches of the
+  `legend`). A chain with a `legend` and no `colorSwitch` is always by kind (XRP). With `colorSwitch: true` (Ethereum, Solana) it starts by price and the
+  HUD offers "Color: Price / Kind" (`#colorby`, remembered); the legend and the note under the scene follow, and the scene paints the towers again in place
+  (`scene.recolor()`).
+- **Diagnostics** (`core/diag.js`, `ui/diag.js`): `?debug` (or Shift+D) opens a panel with what the page did with the network: requests per
+  node, errors, the state of the connection and of the blocks held, and a "Copy report" button to paste into an issue. The network layers
+  call `Explorer.diag?.note/count/gauge` (always optional: nothing depends on it); keys in URLs are masked in the report.
 
 ## Adding a chain
 
@@ -152,8 +176,8 @@ the IP address of the visitor and the addresses and transactions he looks up. Us
    `{ txid, vsize, rate, coinbase?, approx? }` and the block model `{ id, height, previousblockhash, timestamp }`.
 3. Write its words: `blockCard`, `nextCard`, `blockLine`, `nextLine`, `feedRow`, `describeTower`.
 4. Optionally provide hooks (`openTx`, `openBlock`, `search`, `onBlock`, `onVisible`, `onHighlight`, `start`) for its own
-   detail screens, search and statistics. A chain without a hook simply has no such feature.
-5. Optionally state its look and shape: `theme.accent`, `rates.heightScale`, `rates.label`, `blockNumber`, `legend` (and a `color` on each tower) when colors are kinds rather than prices, and `nextBlock: false`
+   detail screens, search and statistics (call `Explorer.link.set(what)` when a screen opens: that is what makes the address bar a link). A chain without a hook simply has no such feature.
+5. Optionally state its look and shape: `theme.accent`, `rates.heightScale`, `rates.label`, `blockNumber`, `legend` (and a `color` on each tower) when colors are kinds rather than prices (`colorSwitch: true` to let the person choose), and `nextBlock: false`
    if there is no pending block to show (see the list of optional parts in `js/core/chain.js`).
 6. Make a page: copy `ethereum.html` (the simplest) and load the new chain's scripts instead; add the chain to the switch of the
    other pages (a logo in `img/`) and a card to `index.html`. No build step: scripts only.

@@ -61,6 +61,12 @@
         <div class="hud-title"><b id="hud-title">Block</b> <span id="hud-sub" class="muted"></span></div>
         <div class="hud-actions">
           <label><input type="checkbox" id="follow" checked> Follow block</label>
+          <label title="Color of the towers: by price, or by kind of transaction">Color
+            <select id="colorby" aria-label="Tower color">
+              <option value="price">Price</option>
+              <option value="kind">Kind</option>
+            </select>
+          </label>
           <label title="Tower order (first layout only when Stable)">Order
             <select id="order" aria-label="Tower order">
               <option value="txid">Txid</option>
@@ -81,12 +87,26 @@
         <div id="tip3d" class="tooltip" hidden></div>
         <div id="scene-msg" class="scene-msg"></div>
       </div>
+      <aside id="wallet" class="wallet" aria-label="Watched address" hidden>
+        <div class="w-head">
+          <button type="button" id="wallet-address" class="link mono"></button>
+          <button type="button" id="wallet-refresh" class="w-btn" aria-label="Reload" title="Reload now">↻</button>
+          <button type="button" id="wallet-toggle" class="w-btn" aria-label="Hide the list" aria-expanded="true" title="Hide the list">▾</button>
+          <button type="button" id="wallet-clear" class="w-btn" aria-label="Stop watching" title="Stop watching">✕</button>
+        </div>
+        <p id="wallet-sum" class="w-sum"></p>
+        <div class="w-body">
+          <ul id="wallet-list" class="js-scroll"></ul>
+          <button type="button" id="wallet-more" class="w-more" hidden>Load older</button>
+          <label class="w-dim"><input type="checkbox" id="wallet-dim" checked> Dim the other transactions</label>
+        </div>
+      </aside>
       <div class="hud hud-bottom">
         <div class="legend" aria-label="Gas price scale, gwei">
           <div class="legend-scale"><i id="legend-bar"></i><span id="legend-ticks"></span></div>
           <span id="legend-max"></span>
         </div>
-        <small class="muted">area = gas used · height &amp; color = gas price (gwei) · click = details</small>
+        <small class="muted">area = gas used · <span id="color-hint">height &amp; color = gas price (gwei)</span> · click = details</small>
       </div>
     </section>
 
@@ -138,6 +158,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
   <!-- pure logic: no DOM, no network -->
   <script defer src="js/core/config.js"></script>
+  <script defer src="js/core/diag.js"></script>
   <!-- the chain the page works with: its numbers and words, read by the engine files below (js/core/chain.js is the contract) -->
   <script defer src="js/core/chain.js"></script>
   <script defer src="js/chains/ethereum/chain.js"></script>
@@ -149,6 +170,7 @@
   <script defer src="js/chains/ethereum/core/mempool.js"></script>
   <script defer src="js/chains/ethereum/core/projection.js"></script>
   <script defer src="js/chains/ethereum/core/address.js"></script>
+  <script defer src="js/chains/ethereum/core/watch.js"></script>
   <script defer src="js/chains/ethereum/core/search.js"></script>
   <script defer src="js/chains/ethereum/core/abi.js"></script>
   <script defer src="js/core/colors.js"></script>
@@ -170,15 +192,19 @@
   <script defer src="js/ui/blocks-row.js"></script>
   <script defer src="js/ui/hud.js"></script>
   <script defer src="js/ui/dialog.js"></script>
+  <script defer src="js/ui/diag.js"></script>
+  <script defer src="js/ui/tracker.js"></script>
   <script defer src="js/chains/ethereum/ui/detail.js"></script>
   <script defer src="js/ui/feed.js"></script>
   <script defer src="js/chains/ethereum/ui/stats-bar.js"></script>
   <!-- orchestration -->
   <script defer src="js/controllers/scene-sync.js"></script>
   <script defer src="js/controllers/requests.js"></script>
+  <script defer src="js/controllers/links.js"></script>
   <script defer src="js/controllers/navigation.js"></script>
   <script defer src="js/chains/ethereum/controllers/details.js"></script>
   <script defer src="js/chains/ethereum/controllers/search.js"></script>
+  <script defer src="js/chains/ethereum/controllers/watch.js"></script>
   <script defer src="js/controllers/feed.js"></script>
   <script defer src="js/chains/ethereum/controllers/stats.js"></script>
   <!-- entry point -->

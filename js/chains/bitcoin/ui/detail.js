@@ -63,6 +63,23 @@
 
   const txsTitle = (loaded, total) => `Transactions (${F.number(loaded)} / ${F.number(total)})`;
 
+  /** What an unconfirmed transaction can tell: when it is expected to be mined, whether it can be replaced, its family's rate. */
+  function pendingRows(tx, rate, { upcoming, cpfp } = {}) {
+    const rows = [];
+    const eta = Explorer.bitcoin.txs.eta(rate, upcoming);
+    if (eta) {
+      rows.push(['Expected', eta.blocks === 1 ? 'in the next block (about 10 minutes)'
+        : eta.blocks ? `in about ${eta.blocks} blocks (${F.number(eta.blocks * 10)} minutes)`
+          : `not in the ${eta.beyond} blocks the mempool is projected into: more than ${F.number(eta.beyond * 10)} minutes at this fee rate`]);
+    }
+    rows.push(['Replaceable', Explorer.bitcoin.txs.signalsRbf(tx) ? 'yes (it signals replace-by-fee: the sender can replace it with one that pays more)' : 'it does not signal replace-by-fee']);
+    const family = cpfp && ((cpfp.ancestors || []).length + (cpfp.descendants || []).length);
+    if (family && Number.isFinite(cpfp.effectiveFeePerVsize)) {
+      rows.push(['With its family (CPFP)', `${cpfp.effectiveFeePerVsize.toFixed(1)} sat/vB for the package · ${F.number((cpfp.ancestors || []).length)} ancestor(s), ${F.number((cpfp.descendants || []).length)} descendant(s): miners look at the whole package`]);
+    }
+    return rows;
+  }
+
   Explorer.ui.detail = {
     /**
      * handlers: onOpenTx(txid), onOpenBlock(hash), onOpenAddress(address), onMoreTxs() (older transactions of the address),
@@ -73,7 +90,7 @@
     message(text) { page = null; Explorer.ui.dialog.message(text); },
 
     /** tx: full transaction from /tx/:txid */
-    tx(tx) {
+    tx(tx, extra = {}) {
       const st = tx.status, inTotal = Explorer.bitcoin.txs.inputTotal(tx), rate = Explorer.bitcoin.txs.fullFeeRate(tx);
       show(el('h2', {}, 'Transaction'), fields([
         ['Txid', mono(tx.txid)],
@@ -84,6 +101,7 @@
         ['Total output', F.btc(Explorer.bitcoin.txs.outputTotal(tx))],
         ['Fee', tx.vin?.[0]?.is_coinbase ? 'None (new coins)' : tx.fee != null ? `${F.number(tx.fee)} sats${rate != null ? ` (${rate.toFixed(1)} sat/vB)` : ''}` : '—'],
         ['Size', `${F.number(tx.size)} B · ${F.number(Math.ceil(tx.weight / 4))} vB`],
+        ...(st.confirmed ? [] : pendingRows(tx, rate, extra)),
       ]), txCard(tx, false));
     },
 

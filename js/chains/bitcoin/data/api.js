@@ -8,6 +8,7 @@
   async function get(path) {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), Explorer.chain.config.apiTimeoutMs); // covers the answer and its body: a stalled one is given up
+    const t0 = Date.now();
     try {
       const res = await fetch(Explorer.chain.config.api + path, { signal: ctl.signal });
       if (!res.ok) {
@@ -16,7 +17,13 @@
         throw err;
       }
       const type = res.headers.get('content-type') || '';
-      return type.includes('json') ? await res.json() : await res.text();
+      const body = type.includes('json') ? await res.json() : await res.text();
+      Explorer.diag?.count('http.ok'); Explorer.diag?.gauge('http.node', `${Explorer.chain.config.api} (${Date.now() - t0} ms)`);
+      return body;
+    } catch (e) {
+      Explorer.diag?.count('http.failed');
+      if (e.status !== 404) Explorer.diag?.note('net', `${path} failed after ${Date.now() - t0} ms: ${e.name === 'AbortError' ? 'timeout' : e.message}`); // a 404 is an answer
+      throw e;
     } finally { clearTimeout(timer); }
   }
 
@@ -43,6 +50,10 @@
     addressTxs: (address) => get(`/address/${encodeURIComponent(address)}/txs`),
     /** The 25 confirmed transactions of an address that come after `lastTxid` (the oldest one already known). */
     addressTxsAfter: (address, lastTxid) => get(`/address/${encodeURIComponent(address)}/txs/chain/${lastTxid}`),
+    /** Fees to pay now: { fastestFee, halfHourFee, hourFee, economyFee, minimumFee } in sat/vB. */
+    fees: () => get('/v1/fees/recommended'),
+    /** The family of an unconfirmed transaction (CPFP): { ancestors, descendants, effectiveFeePerVsize, ... }. */
+    cpfp: (txid) => get(`/v1/cpfp/${txid}`),
     /** ~10 latest transactions that entered the mempool, newest first. */
     recent: () => get('/mempool/recent'),
     hashrate3d: () => get('/v1/mining/hashrate/3d'),

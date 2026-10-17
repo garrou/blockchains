@@ -23,6 +23,12 @@
     },
     /** m: { value (text), sub } */
     renderDay(m) { setValue('st-day', m.value, 'tx'); $('#st-day-sub').textContent = m.sub; },
+    /** m: result of Explorer.bitcoin.stats.fromFees */
+    renderFees(m) {
+      if (m.next == null) return;
+      setValue('st-fees', F.number(Math.round(m.next)), 'sat/vB');
+      $('#st-fees-sub').textContent = [m.half != null ? `30 min ${F.number(Math.round(m.half))}` : null, m.hour != null ? `1 h ${F.number(Math.round(m.hour))}` : null, m.economy != null ? `economy ${F.number(Math.round(m.economy))}` : null].filter(Boolean).join(' · ');
+    },
     /** m: result of Explorer.bitcoin.stats.fromAdjustment */
     renderAdjustment(m) {
       if (m.change != null) {
