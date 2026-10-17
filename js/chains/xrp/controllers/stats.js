@@ -34,9 +34,12 @@
     refreshDay(); // only does something when the last estimate is older than dayMs (and once there are ledgers to measure the pace on)
   }
 
+  let feeAsked = false; // a request for the fee is out (in the queue, during a pause, they would pile up)
+
   /** Asks the server: what a transaction costs now, and how full the queue is. */
   async function refresh() {
-    if (document.hidden) return; // nobody looks at a hidden tab
+    if (document.hidden || feeAsked) return; // nobody looks at a hidden tab
+    feeAsked = true;
     try {
       const r = await X.ws.call('fee', {}, { priority: 2 }); // not what a person waits for: after the page's own reads
       const d = r.drops ?? {}, open = Number(d.open_ledger_fee), base = Number(d.base_fee);
@@ -45,7 +48,7 @@
         value: F.number(open),
         sub: `reference ${F.number(base)} drops · queue ${F.number(r.current_queue_size ?? 0)} of ${F.number(r.max_queue_size ?? 0)}`,
       };
-    } catch (e) { console.warn('fee', e); }
+    } catch (e) { console.warn('fee', e); } finally { feeAsked = false; }
     refreshLocal();
   }
 

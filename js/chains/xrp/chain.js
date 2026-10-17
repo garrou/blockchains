@@ -41,6 +41,8 @@
       ws: ['wss://xrplcluster.com', 'wss://s1.ripple.com', 'wss://s2.ripple.com'],
       rpcTimeoutMs: 20000,
       maxInFlight: 4,                                 // commands out at once: the public servers give a budget (about 2,000 units per 10 s) and answer "tooBusy" beyond it
+      connectMs: 10000,                               // a server that has not finished opening the WebSocket after this long is given up
+      ledgerQuietMs: 45000,                           // no ledger pushed for this long while the line answers: the stream is stuck, the connection is opened again (a ledger closes every 3 to 5 s)
       switchAfter: 2, switchWindowMs: 30000,          // refusals for load within this time make the page try the next server
       switchIfWaitMs: 10000,                          // ... and one that says its budget needs this long to come back makes it leave at once (and not come back before)
       pace: { startMs: 300, maxMs: 2000 },            // after a refusal the commands go out this far apart (it doubles at each refusal, up to the maximum, and eases off with every answer)

@@ -18,7 +18,10 @@
    * The page of a transaction already read. An unconfirmed one also has a family (CPFP): asked now, but not waited for long.
    * token: the request it belongs to; opened: whether the dialog is already open (a search opens it with the answer).
    */
+  let waiting = null; // the unconfirmed transaction the dialog shows: { txid, token } (see refreshPending)
+
   async function showTx(tx, token, opened = true) {
+    waiting = tx.status.confirmed ? null : { txid: tx.txid, token };
     const cpfp = tx.status.confirmed ? null : await Promise.race([Explorer.bitcoin.api.cpfp(tx.txid).catch(() => null), new Promise((r) => setTimeout(() => r(null), 3000))]);
     if (opened ? wanted(token) : isCurrent(token)) Explorer.ui.detail.tx(tx, { upcoming: Explorer.state.upcoming, cpfp });
   }
@@ -91,8 +94,18 @@
     }
   }
 
+  /** A block was mined: the dialog that shows an unconfirmed transaction is made again when that transaction is in a block now. */
+  async function refreshPending() {
+    const w = waiting;
+    if (!w || !wanted(w.token)) return;
+    try {
+      const tx = await Explorer.bitcoin.api.tx(w.txid);
+      if (tx.status.confirmed && waiting === w && wanted(w.token)) await showTx(tx, w.token);
+    } catch (e) { console.warn('pending transaction', e); }
+  }
+
   /** The address page that is open: { address, summary, txs } (null when the dialog shows something else, or the list failed). */
   const shownAddress = () => (shown && wanted(shown.token) ? shown : null);
 
-  Explorer.bitcoin.details = { showTx, openTx, openBlock, openAddress, moreAddressTxs, shownAddress };
+  Explorer.bitcoin.details = { showTx, openTx, openBlock, openAddress, moreAddressTxs, shownAddress, refreshPending };
 })();

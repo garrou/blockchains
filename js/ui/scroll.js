@@ -11,7 +11,7 @@
       wrap.classList.toggle('can-prev', scroller.scrollLeft > 4);
       wrap.classList.toggle('can-next', scroller.scrollLeft < scroller.scrollWidth - scroller.clientWidth - 4);
     };
-    const go = (dir) => scroller.scrollBy({ left: dir * scroller.clientWidth * 0.8, behavior: 'smooth' });
+    const go = (dir) => scroller.scrollBy({ left: dir * scroller.clientWidth * 0.8, behavior: Explorer.dom.scrollBehavior() });
     prev.addEventListener('click', () => go(-1));
     next.addEventListener('click', () => go(1));
     scroller.addEventListener('scroll', update, { passive: true });

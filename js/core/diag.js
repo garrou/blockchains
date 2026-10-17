@@ -1,5 +1,5 @@
 // Diagnostics: what the page has been doing with the network, kept in memory (a short log, counters, a few current values), for
-// the panel opened with `?debug` (ui/diag.js) and its "Copy report". Pure: no DOM. The page works the same without it; it only
+// the panel opened with `?debug` (ui/diag.js) and its "Copy report". No DOM of its own (it listens for the page's errors and wraps console.warn / console.error). The page works the same without it; it only
 // remembers, nothing is sent anywhere. It is loaded first so that every later file can note what it does.
 (() => {
   'use strict';
@@ -12,8 +12,16 @@
   const startedAt = Date.now();
   const listeners = new Set();
 
-  /** A key or a token in an address is not for a report that gets pasted into a chat. */
-  const clean = (text) => String(text).replace(/([?&](?:key|apikey|api_key|token|access_token)=)[^&\s"']+/gi, '$1***');
+  /**
+   * A key or a token in an address is not for a report that gets pasted into a chat, nor for a screenshot. Hidden: a query parameter
+   * whose name says key / token / auth / secret / password ("?api-key=", "&access_token="...), the user:password of an address, and a
+   * long segment of an address's path ("/v2/<key>" of Alchemy, "/v3/<key>" of Infura...), except a 64-digit hash or a 40-digit address.
+   */
+  const HASHLIKE = /^(?:0x)?(?:[0-9a-f]{64}|[0-9a-f]{40})$/i;
+  const clean = (text) => String(text).replace(/\b(?:https?|wss?):\/\/[^\s"'<>]+/gi, (url) => url
+    .replace(/\/\/[^/@\s]*@/, '//***@')
+    .replace(/([?&;][\w.-]*(?:key|token|auth|secret|passw|sig)[\w.-]*=)[^&#\s]*/gi, '$1***')
+    .replace(/\/([A-Za-z0-9_-]{20,})(?=[/?#]|$)/g, (m, seg) => (HASHLIKE.test(seg) ? m : '/***')));
 
   function note(kind, text) {
     events.push({ at: Date.now(), kind, text: clean(text) });
@@ -21,7 +29,7 @@
     listeners.forEach((fn) => fn());
   }
   const count = (name, n = 1) => { counters[name] = (counters[name] ?? 0) + n; };
-  const gauge = (name, value) => { gauges[name] = value; };
+  const gauge = (name, value) => { gauges[name] = typeof value === 'string' ? clean(value) : value; };
 
   // what the page itself complains about
   for (const kind of ['warn', 'error']) {
@@ -39,7 +47,7 @@
     const c = Explorer.chain;
     const lines = [
       `Explorer report · ${new Date().toISOString()} · open for ${Math.round((Date.now() - startedAt) / 1000)} s`,
-      `page: ${clean(location.href)}`,
+      `page: ${clean(location.href.replace(/#.*$/, ''))}`, // what a person looked up (the #q= of a link) is not for a report
       `browser: ${navigator.userAgent}`,
       `screen: ${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio || 1}${document.hidden ? ' (tab hidden)' : ''}`,
       `chain: ${c ? `${c.id} (${c.name})` : 'not defined'}`,

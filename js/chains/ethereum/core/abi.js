@@ -37,7 +37,7 @@
     } catch { return null; }
   }
   function textOf(hexBytes) {
-    const text = new TextDecoder().decode(E.keccak.fromHex(hexBytes)).replace(/\u0000+$/g, '').replace(/[\u0000-\u001f]/g, '');
+    const text = new TextDecoder().decode(E.keccak.fromHex(hexBytes)).replace(/\u0000+$/g, '').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, ''); // controls, zero-width and direction-changing characters: a token name must not spoof another
     return text || null;
   }
 

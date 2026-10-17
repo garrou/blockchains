@@ -32,8 +32,8 @@
 
   /** The ids of the blocks of the page that hold transactions of the address: the scene outlines them. */
   const blocksOf = (list) => {
-    const heights = new Set(list.map((e) => e.height));
-    return new Set([...state.blocks, ...state.liveBlocks].filter((b) => heights.has(b.height)).map((b) => b.id));
+    const slots = new Set(list.map((e) => e.slot));
+    return new Set([...state.blocks, ...state.liveBlocks].filter((b) => slots.has(b.slot)).map((b) => b.id)); // only the block that IS the slot of a transaction holds its tower (one slot in ten is shown)
   };
 
   /** Makes the scene and the panel match the watched address (or its absence). */

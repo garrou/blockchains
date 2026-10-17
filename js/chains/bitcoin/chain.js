@@ -86,7 +86,7 @@
         ? 'Coinbase (block reward)'
         : t.approx
           ? `${f.short(t.txid, 12, 8)}\n(size and fee unavailable)`
-          : `${f.short(t.txid, 12, 8)}\n${t.rate.toFixed(1)} sat/vB · ${f.number(t.vsize)} vB\nfee ${f.number(t.fee)} sats`;
+          : `${f.short(t.txid, 12, 8)}\n${f.rate(t.rate)} sat/vB · ${f.number(t.vsize)} vB\nfee ${f.number(t.fee)} sats`;
       const mine = Explorer.bitcoin.walletCtl.entryOf(t.txid);
       return mine ? `${text}\n★ ${f.btcSigned(mine.net)} for ${f.short(Explorer.state.wallet.address, 8, 6)}` : text;
     },
@@ -123,6 +123,7 @@
     onBlock() {
       Explorer.bitcoin.statsCtl.maybeRefresh();                              // a new block moves the retarget progress
       Explorer.bitcoin.walletCtl.onBlock();                                  // it may confirm transactions of the tracked address
+      Explorer.bitcoin.details.refreshPending();                             // ... or the unconfirmed one the dialog shows
     },
     onVisible() {
       Explorer.bitcoin.walletCtl.catchUp();

@@ -19,13 +19,21 @@
   const linesOf = (w) => E.watch.list(w.pending, w.txs);
   const noteOf = (list) => new Map(list.filter((e) => e.pending).map((e) => [e.txid, 'in the mempool']));
 
+  /** How far back the list is complete: the lowest block of the unbroken run of blocks that were looked through, up from the newest one. */
+  function reachOf(w) {
+    if (!w.seen.size) return null;
+    let low = Math.max(...w.seen);
+    while (w.seen.has(low - 1)) low--;
+    return low;
+  }
+
   /** Draws the panel. */
   function render() {
     const w = state.wallet;
     if (!w) return;
     const list = linesOf(w);
     ui().tracker.render({
-      address: w.address, entries: list, lit: sync().litTxids(), notes: noteOf(list), reach: w.since, more: false, busy: false, failed: false, dim,
+      address: w.address, entries: list, lit: sync().litTxids(), notes: noteOf(list), reach: reachOf(w), more: false, busy: false, failed: false, dim,
       empty: 'Nothing yet: this page lists the transactions of the address that it sees from now on, and in the blocks it already holds.',
     });
   }
@@ -65,7 +73,7 @@
   function scan(b, rows) {
     const w = state.wallet;
     if (!w) return;
-    w.since = w.since == null ? b.height : Math.min(w.since, b.height);
+    w.seen.add(b.height);
     const mine = rows.map((r) => E.watch.entry(r, b, w.address)).filter(Boolean);
     if (mine.length) w.txs = E.watch.merge(w.txs, mine, cfg().max);
     apply();
@@ -111,7 +119,7 @@
 
   /** Starts watching an address (any spelling of a valid one). */
   function track(address) {
-    state.wallet = { address: address.toLowerCase(), txs: [], pending: [], since: null, busy: false, failed: false };
+    state.wallet = { address: address.toLowerCase(), txs: [], pending: [], seen: new Set(), busy: false, failed: false };
     apply();
     look();
     scanKnown();

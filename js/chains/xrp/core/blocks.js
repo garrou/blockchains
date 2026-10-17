@@ -31,8 +31,9 @@
    * lacks something or does not follow: the ledger is then read.
    */
   function fromEvent(msg, previous) {
-    const closed = Number(msg?.ledger_time), index = Number(msg?.ledger_index), count = Number(msg?.txn_count);
-    if (typeof msg?.ledger_hash !== 'string' || !previous || index !== previous.height + 1 || !Number.isFinite(closed) || !Number.isInteger(count) || count < 0) return null;
+    if (typeof msg?.ledger_hash !== 'string' || !previous || typeof msg.ledger_time !== 'number' || typeof msg.txn_count !== 'number') return null; // null or a string would pass for 0
+    const closed = msg.ledger_time, index = Number(msg.ledger_index), count = msg.txn_count;
+    if (index !== previous.height + 1 || !Number.isFinite(closed) || !Number.isInteger(count) || count < 0) return null;
     const timestamp = X.format.unixTime(closed);
     return { id: msg.ledger_hash, height: index, previousblockhash: previous.id, timestamp, tx_count: count, closedIn: timestamp >= previous.timestamp ? timestamp - previous.timestamp : null, totalCoins: null };
   }

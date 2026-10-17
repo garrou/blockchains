@@ -889,6 +889,10 @@ dialog::backdrop {
   .thumb {
     transition: none;
   }
+
+  .block.fresh {
+    animation: none;
+  }
 }
 
 /* ---------- network stats ---------- */

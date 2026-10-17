@@ -118,7 +118,7 @@
     ctl = c;
     open = true;
     inFlight = 0;
-    if (c.node !== lastNode) { lastNode = c.node; pausedUntil = 0; gap = 0; refusals = []; } // another server has a budget of its own
+    if (c.node !== lastNode) { lastNode = c.node; pausedUntil = 0; gap = Math.min(gap, cfg().pace.startMs); refusals = []; } // another server has a budget of its own (but the commands still go out gently: its own limit is not known yet)
     const id = nextId++;
     const timer = setTimeout(() => { waiting.delete(id); Explorer.diag?.note('ws', 'subscription not answered in time'); c.close(); }, cfg().rpcTimeoutMs); // a server that does not answer the subscription is replaced
     waiting.set(id, {
@@ -180,10 +180,12 @@
     onBusy(cb) { busyListeners.add(cb); return () => busyListeners.delete(cb); },
     /** Seconds the page has been asked to wait still (0 when nothing is paused): for a dialog that waits, to say so and count down. */
     waitSeconds: () => Math.max(0, Math.ceil((pausedUntil - Date.now()) / 1000)),
+    /** The connection is dropped and opened again (the stream of ledgers went quiet while the line still answers). */
+    reconnect() { ctl?.close(); },
     /** handlers: onSubscribed(result) the subscription is accepted, onLedger(msg) a ledger closed, onClose(). */
     start(h) {
       handlers = h;
-      return Explorer.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose, memoryKey: 'badNodes.xrp' });
+      return Explorer.jsonrpc.socket({ urls: () => cfg().ws, staleMs: cfg().wsStaleMs, onOpen, onMessage, onClose, memoryKey: 'badNodes.xrp', connectMs: cfg().connectMs });
     },
   };
 })();

@@ -23,7 +23,7 @@
       <input id="q" type="search" placeholder="Block, tx hash, address or .eth name" aria-label="Search">
       <button type="submit">Search</button>
     </form>
-    <span id="status" class="pill off">offline</span>
+    <span id="status" class="pill off" role="status">offline</span>
   </header>
 
   <main>
@@ -85,7 +85,7 @@
       </div>
       <div id="scene">
         <div id="tip3d" class="tooltip" hidden></div>
-        <div id="scene-msg" class="scene-msg"></div>
+        <div id="scene-msg" class="scene-msg" role="status"></div>
       </div>
       <aside id="wallet" class="wallet" aria-label="Watched address" hidden>
         <div class="w-head">
@@ -102,7 +102,7 @@
         </div>
       </aside>
       <div class="hud hud-bottom">
-        <div class="legend" aria-label="Gas price scale, gwei">
+        <div class="legend" role="group" aria-label="Gas price scale, gwei">
           <div class="legend-scale"><i id="legend-bar"></i><span id="legend-ticks"></span></div>
           <span id="legend-max"></span>
         </div>
@@ -140,7 +140,7 @@
     </section>
   </main>
 
-  <dialog id="detail" tabindex="-1">
+  <dialog id="detail" tabindex="-1" aria-label="Details">
     <button id="close" aria-label="Close">✕</button>
     <div id="detail-body" class="js-scroll"></div>
   </dialog>

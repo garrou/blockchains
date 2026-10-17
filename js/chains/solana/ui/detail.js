@@ -44,7 +44,7 @@
   }
 
   /** Size of an account's data: parsed accounts say it, the others carry it base64-encoded as [data, 'base64']. */
-  const dataSize = (a) => (a.data?.space != null ? a.data.space : Array.isArray(a.data) ? Math.floor((a.data[0].length * 3) / 4) : 0);
+  const dataSize = (a) => (a.data?.space != null ? a.data.space : Array.isArray(a.data) ? Math.floor((a.data[0].length * 3) / 4) - a.data[0].match(/=*$/)[0].length : 0); // base64: 3 bytes for 4 characters, less the padding
 
   Explorer.ui.detail = {
     /** handlers: onOpenTx(signature), onOpenSlot(slot), onOpenAddress(address), onWatch(address) (absent without 3D) */
@@ -115,7 +115,7 @@
       const info = parsed?.info ?? {};
       show(el('h2', {}, 'Account'), fields([
         ['Address', el('span', {}, mono(v.address), S.programs.nameOf(v.address) ? el('em', { class: 'sol-name' }, ` ${S.programs.nameOf(v.address)}`) : null)],
-        ['Balance', x.sol(v.lamports, 9)],
+        ['Balance', Number.isSafeInteger(v.lamports) ? x.sol(v.lamports, 9) : `≈ ${x.sol(v.lamports, 3)}`], // above 9 million SOL the node's number is more than a double holds exactly
         ['Type', !a ? 'Does not exist on chain (no SOL, never funded)' : a.executable ? 'Program (executable)' : parsed?.type === 'mint' ? 'Token mint' : parsed?.type === 'account' ? 'Token account' : a.owner === S.programs.SYSTEM ? 'Wallet (owned by the System program)' : 'Data account'],
         a ? ['Owner program', addr(a.owner)] : null,
         a ? ['Data size', `${F.number(dataSize(a))} bytes`] : null,

@@ -56,6 +56,7 @@
         const collapsed = $('#wallet').classList.toggle('collapsed');
         $('#wallet-toggle').setAttribute('aria-expanded', String(!collapsed));
         $('#wallet-toggle').title = collapsed ? 'Show the list' : 'Hide the list';
+        $('#wallet-toggle').setAttribute('aria-label', $('#wallet-toggle').title); // the label must say what the button does now
       });
       return { dim };
     },
@@ -101,6 +102,6 @@
     },
 
     /** Brings the scene into view (the panel is over it). */
-    reveal() { $('.stage').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); },
+    reveal() { $('.stage').scrollIntoView({ block: 'nearest', behavior: Explorer.dom.scrollBehavior() }); },
   };
 })();

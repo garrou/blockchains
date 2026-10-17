@@ -41,7 +41,13 @@
   function onHead(head) {
     blockChain = blockChain.then(async () => {
       try {
-        const { block, rows } = await E.data.rowsOf({ id: head.hash });
+        // the node that answers the page's requests may not have this block yet (the push came from another one): asked again a moment later
+        // before giving up, since giving up empties the whole sample of the mempool
+        let read;
+        for (let attempt = 0; ; attempt++) {
+          try { read = await E.data.rowsOf({ id: head.hash }); break; } catch (e) { if (attempt >= 2) throw e; await new Promise((r) => setTimeout(r, 1000)); }
+        }
+        const { block, rows } = read;
         if (block.height >= tipHeight) pool.dropMined(rows);
         rows.forEach((r) => mined.add(r.hash));
         if (mined.size > 6000) for (const h of [...mined].slice(0, mined.size - 4000)) mined.delete(h); // about 30 blocks
@@ -77,6 +83,7 @@
   }
 
   async function fetchQueued() {
+    if (document.hidden) return; // nobody looks at a hidden tab: about twenty requests a second would go on against the public nodes (what was announced waits, bounded)
     const take = Math.max(1, Math.round((cfg().pending.fetchPerSec * cfg().pending.tickMs) / 1000));
     const hashes = fetching ? [] : [...queued].slice(-take); // the newest; none while the previous batch is still out (a slow node must not pile up requests)
     hashes.forEach((h) => queued.delete(h));

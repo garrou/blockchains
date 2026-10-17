@@ -22,7 +22,7 @@
       if (q.type === 'name') {
         const address = await E.details.resolveName(q.name);
         if (!Explorer.requests.isCurrent(token)) return; // a newer search took over while the name was being resolved
-        if (!address) throw new Error(`"${q.name}" does not resolve to an address`);
+        if (!address) throw new Error(`"${q.name}" does not resolve to an address (names that need a wildcard or off-chain resolver are not supported)`);
         return await E.details.openAddress(address, q.name);
       }
       Explorer.ui.detail.message('Not recognized: enter a block number, a block or transaction hash (0x…), an address or a .eth name.');

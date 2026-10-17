@@ -37,9 +37,10 @@
 
   /** The camera was sent to a block by a person: `text` is its number. */
   function setCamera(text) {
-    const replace = applying > 0 || (current !== null && current === camera); // a camera move replaces the previous camera link
+    const replace = applying > 0 || (current !== null && (current === camera || current === String(text))); // a camera move replaces the previous camera link (and the entry of the search that has just led here)
     camera = String(text);
-    if (camera !== current) { write(camera, replace); if (!applying) depth = 0; }
+    write(camera, replace); // also when the address bar already says it (a search by height): the entry is now the camera's, not a dialog's
+    if (!applying) depth = 0;
   }
 
   /** The dialog was closed: the address bar goes back to the camera (or to the page). */
@@ -61,13 +62,17 @@
   function open() {
     const q = fromHash();
     applying++;
-    setTimeout(() => { applying--; }, 1500); // while it opens, what the chains show replaces the entry instead of adding one
+    let released = false;
+    const release = () => { if (!released) { released = true; applying--; } };
+    setTimeout(release, 15000); // (a search that never ends must not leave the page in this state)
     current = q;
     depth = history.state && history.state.explorer === 'dialog' ? 1 : 0; // a dialog entry this page pushed, reached by Back / Forward: closing goes back once (a pasted link has nothing before it)
-    if (q === null) { Explorer.ui.dialog.close(); return; }
+    if (q === null) { Explorer.ui.dialog.close(); setTimeout(release, 1500); return; }
     const input = document.querySelector('#q');
     if (input) input.value = q;
-    runSearch(q);
+    // while it opens, what the chains show replaces the entry instead of adding one: until the search is over, however long it takes (a name to
+    // resolve, a busy server), and a moment longer for what the dialog sets as it appears
+    Promise.resolve().then(() => runSearch(q)).catch(() => {}).finally(() => setTimeout(release, 600));
   }
 
   Explorer.link = {

@@ -13,6 +13,7 @@
   let headIndex = 0;        // newest ledger index heard of
   let busy = false;
   let lastBackfill = 0;
+  let lastPush = Date.now(); // when the server last pushed a ledger (or the subscription was accepted)
   const heard = new Map();  // ledger index -> what the server pushed when it closed: enough to make the ledger's block without asking for it
 
   /** The newest ledger seen (from the list the engine loads): where the stream goes on from. */
@@ -28,7 +29,7 @@
     try {
       while (headIndex > last.height) {
         if (headIndex - last.height > cfg().maxCatchUp) { // far behind (a sleeping tab): the engine reloads the list
-          if (Date.now() - lastBackfill > 5000) { lastBackfill = Date.now(); handlers.onOpen?.(); }
+          if (Date.now() - lastBackfill > 5000 && X.ws.waitSeconds() === 0) { lastBackfill = Date.now(); handlers.onOpen?.(); } // (not while the server asks to wait: the reload would be fifteen more reads into it)
           break;
         }
         const next = last.height + 1;
@@ -43,6 +44,7 @@
   }
 
   function onLedger(msg) {
+    lastPush = Date.now();
     const index = Number(msg.ledger_index);
     if (!Number.isFinite(index) || index <= headIndex) return;
     headIndex = index;
@@ -56,9 +58,13 @@
     headIndex: () => headIndex, // the newest ledger index heard of
     connect(h) {
       handlers = h;
+      setInterval(() => { // the line answers (the page's own commands) but the ledgers no longer come: the subscription is stuck
+        if (connected && !document.hidden && Date.now() - lastPush > cfg().ledgerQuietMs) { lastPush = Date.now(); Explorer.diag?.note('ws', 'no ledger pushed for a long time: reconnecting'); X.ws.reconnect(); }
+      }, 10000);
       X.ws.start({
         onSubscribed(result) {
           connected = true;
+          lastPush = Date.now();
           h.onStatus?.(true);
           const index = Number(result?.ledger_index);
           if (Number.isFinite(index)) headIndex = Math.max(headIndex, index);

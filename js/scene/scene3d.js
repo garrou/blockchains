@@ -287,7 +287,7 @@
       let n = 0;
       for (const id of ids) {
         const k = index.get(id);
-        if (k === undefined || n >= MAX_ARRIVALS) continue;
+        if (k === undefined || n >= MAX_ARRIVALS || slot.arrivals.length + n >= 3 * MAX_ARRIVALS) continue; // and never more than a few updates' worth at once
         const r = slot.rects[k];
         const mesh = fallingTower(new THREE.Color().fromArray(slot.base, k * 3), r.w, slot.heights[k], r.h);
         const ang = Math.random() * Math.PI * 2, rad = SIZE * (0.7 + Math.random() * 0.5);
@@ -429,7 +429,7 @@
         setTower(slot, k, 0);
       }
       if (carried.length) mesh.instanceMatrix.needsUpdate = true;
-      if (!animate && incoming && incoming.length && !reduceMotion) spawnArrivals(slot, incoming);
+      if (!animate && incoming && incoming.length && !reduceMotion && visible && !document.hidden) spawnArrivals(slot, incoming); // nothing falls while nobody sees it: the falls would pile up unseen
       styleCues(slot);
       litChanged();
     }
@@ -597,7 +597,7 @@
       camera.aspect = w / h; camera.updateProjectionMatrix();
     }
     new ResizeObserver(resize).observe(container);
-    new IntersectionObserver((en) => { visible = en[0].isIntersecting; }).observe(container);
+    new IntersectionObserver((en) => { visible = en.at(-1).isIntersecting; }).observe(container); // the newest entry says where it is now
     resize();
 
     let last = performance.now();

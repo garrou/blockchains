@@ -7,7 +7,7 @@
 
   let panel = null, off = null, timer = 0;
 
-  const fmt = (v) => (typeof v === 'object' ? JSON.stringify(v) : String(v));
+  const fmt = (v) => (typeof v === 'object' ? JSON.stringify(v) : String(v)); // gauges are already cleaned when stored (core/diag.js)
 
   function draw() {
     if (!panel) return;

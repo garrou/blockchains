@@ -26,8 +26,8 @@
     /** m: result of Explorer.bitcoin.stats.fromFees */
     renderFees(m) {
       if (m.next == null) return;
-      setValue('st-fees', F.number(Math.round(m.next)), 'sat/vB');
-      $('#st-fees-sub').textContent = [m.half != null ? `30 min ${F.number(Math.round(m.half))}` : null, m.hour != null ? `1 h ${F.number(Math.round(m.hour))}` : null, m.economy != null ? `economy ${F.number(Math.round(m.economy))}` : null].filter(Boolean).join(' · ');
+      setValue('st-fees', F.rate(m.next), 'sat/vB');
+      $('#st-fees-sub').textContent = [m.half != null ? `30 min ${F.rate(m.half)}` : null, m.hour != null ? `1 h ${F.rate(m.hour)}` : null, m.economy != null ? `economy ${F.rate(m.economy)}` : null].filter(Boolean).join(' · ');
     },
     /** m: result of Explorer.bitcoin.stats.fromAdjustment */
     renderAdjustment(m) {

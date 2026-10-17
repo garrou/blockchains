@@ -129,8 +129,9 @@
     const parent = state.blocks.find((x) => x.height === b.height - 1);
     if (state.blocks.length > 1 && (!parent || (b.previousblockhash && parent.id !== b.previousblockhash))) loadBlocks();
     if (!sync().active()) return;
+    if (!state.follow) ensureFocusExists(); // the camera must not stay on a block that has just dropped out of the list: before the scene is drawn around it
     sync().sync(b.id);
-    if (state.follow) focus(b.id, true); else ensureFocusExists();
+    if (state.follow) focus(b.id, true);
   }
 
   /** Merges the latest blocks into the state (startup, and backfill after a WebSocket reconnect). */

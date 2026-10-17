@@ -10,13 +10,13 @@ Each page is split in two:
 
 The engine talks to the chain only through `Explorer.chain`. The contract is written (and validated at startup) in
 [`js/core/chain.js`](../js/core/chain.js). An engine file must not name a Bitcoin,
-Ethereum or Solana module or unit (`Explorer.bitcoin`, `gwei`, `lamports`...): `grep -rn "Explorer.bitcoin\|gwei\|lamport" js --exclude-dir=chains` should find nothing outside comments.
+Ethereum or Solana module or unit (`Explorer.bitcoin`, `gwei`, `lamports`...): `grep -rn "Explorer.bitcoin\|Explorer.xrp\|gwei\|lamport\|drops" js --exclude-dir=chains` should find nothing outside comments.
 
 ## Where things are
 
 ```
 js/
-  core/          pure logic, no DOM, no network (treemap layout, colors, block list, feed buffer, formatting)
+  core/          pure logic, no network (treemap layout, colors, block list, feed buffer, formatting); the one exception is diag.js, which listens for the page's errors and wraps console.warn / console.error
     chain.js     THE CONTRACT: what a chain must provide (Explorer.defineChain)
   state/         the single mutable state of the app
   scene/         the 3D view (Three.js): rendering only
@@ -27,7 +27,7 @@ js/
   chains/<name>/ (bitcoin, ethereum, solana, xrp: the same four folders, each file is that chain's own)
     chain.js     the spec passed to Explorer.defineChain: numbers, words, data, live, hooks
     core/        pure logic of the chain (transactions, addresses, search classification...), no DOM, no network
-    data/        where the data comes from (Bitcoin: mempool.space; Ethereum, Solana: a node, over JSON-RPC)
+    data/        where the data comes from (Bitcoin: mempool.space; Ethereum, Solana: a node, over JSON-RPC; XRP: a server, over one WebSocket)
     ui/          the chain's screens (detail dialog content, statistics bar)
     controllers/ the chain's orchestration (detail requests, search, statistics, tracked or watched address)
 css/             style.css (shared by every page, home page included), bitcoin.css, ethereum.css, solana.css, xrp.css (what only that chain's page needs)
@@ -39,8 +39,9 @@ img/                                         the logos of the chains (title, swi
 All files are classic scripts sharing the global `Explorer` (no modules, no build): the page works when double-clicked.
 `Explorer` holds the engine (`Explorer.chain`, `Explorer.ui`, `Explorer.state`...); each chain keeps its own modules under its name
 (`Explorer.bitcoin.api`, `Explorer.ethereum.rpc`, `Explorer.solana.txs`...), so the engine and the chains never share a name.
-The order of the `<script>` tags in each chain's page matters; it follows the layers above, and the chain is loaded
-right after `core/config.js` because some engine files read `Explorer.chain` while loading.
+The order of the `<script>` tags in each chain's page matters; it follows the layers above: `core/config.js`, `core/diag.js`, then `core/chain.js` (the contract:
+it defines `Explorer.defineChain`, so it comes first) and the chain's own `chain.js`, because some files read `Explorer.chain` while loading
+(`core/colors.js` and, in each chain, the files that build their legend or tables from it).
 
 ## A short glossary of the 3D view
 
@@ -91,7 +92,7 @@ Provisional data: if a mined block's towers are not known precisely yet (`approx
 | data | mempool.space REST + WebSocket | a node: JSON-RPC + WebSocket (`eth_subscribe`) | a node: JSON-RPC + WebSocket (`slotSubscribe`) | a server: **one WebSocket** for the commands and the ledgers that close (`subscribe` to `ledger`) |
 | accent | orange | Ethereum blue | Solana purple (the scale ends in the logo's green) | XRP blue |
 | address page | totals + transactions | balance, nonce, contract or wallet, token name, ENS | balance, owner program, token holdings, latest transactions | balance, objects owned, latest transactions, "Show in 3D" |
-| tracked address in 3D | "Show in 3D": the full history | "Watch in 3D": **from now on** (what the page sees) | "Watch in 3D": `getSignaturesForAddress`, no amounts | "Show in 3D": `account_tx`, validated transactions, a page at a time |
+| tracked address in 3D | "Show in 3D": the pending transactions and the 25 newest confirmed, "Load older" adds 25 at a time | "Watch in 3D": **from now on** (what the page sees) | "Watch in 3D": `getSignaturesForAddress`, no amounts | "Show in 3D": `account_tx`, validated transactions, a page at a time |
 
 The statistics bar of each chain ends with **Transactions / day**. How it is counted depends on what the chain lets a page read:
 
@@ -102,8 +103,8 @@ The statistics bar of each chain ends with **Transactions / day**. How it is cou
 | Solana | `getRecentPerformanceSamples`: the node keeps about 12 hours of one-minute samples; the rate over them, scaled to 24 h. The figure leaves the votes out when the node tells them apart (`numNonVoteTransactions`) | an extrapolation of 12 hours |
 | XRP Ledger | `ledger` for 36 ledgers spread over the last ~21,600, scaled to the day | an estimate, a few percent |
 
-Tracking an address in 3D differs with what the chain lets a page read. On Bitcoin the page lights up the towers of an address from its whole
-history: the mempool.space API lists every transaction of an address. On Ethereum a plain node cannot (it takes an indexer such as Etherscan, which
+Tracking an address in 3D differs with what the chain lets a page read. On Bitcoin the page lights up the towers of an address from its history, as far as the page has loaded it (its pending transactions and the 25 newest confirmed, then
+"Load older"): the mempool.space API lists the transactions of an address, a page at a time. On Ethereum a plain node cannot (it takes an indexer such as Etherscan, which
 needs a key), so the page **watches** instead: `controllers/watch.js` scans the blocks it holds when the watch starts (the cache of `data/blocks.js`),
 every block that comes in, and the pending transactions of the mempool sample (every 2 s), and keeps the ones that name the address as sender or
 recipient (`core/watch.js`). It never goes back in time, does not see movements inside contracts or tokens, and the panel says how far it looks
@@ -154,11 +155,11 @@ A command that was on its way when the connection dropped is asked again on the 
 one read of the latest ledgers instead of making two. The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
 
 What is Bitcoin-specific beyond the towers: the fee card (`Fees to pay now`, `core/stats.js` `fromFees`) reads `/v1/fees/recommended` and says what
-the next block, half an hour and an hour cost for a typical transaction; the page of a transaction that is not mined yet says whether it can be replaced
-(BIP125: `signalsRbf` in `core/txs.js`), when it is expected (`eta`: the position of its fee rate in the projected blocks, one block per ~10 minutes) and,
+the fee rates (sat/vB) that get a transaction into the next block, within half an hour and within an hour, plus the "economy" rate; the page of a transaction that is not mined yet says whether it signals replace-by-fee
+(BIP125: `signalsRbf` in `core/txs.js`; an ancestor that signals, or a node running full replace-by-fee, can make it replaceable anyway, and the page says so), when it is expected (`eta`: the position of its fee rate in the projected blocks, one block per ~10 minutes) and,
 from `/v1/cpfp/<txid>`, the family it is bundled with (child-pays-for-parent).
 
-Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit, and their operators see
+Default nodes are public ones (`config.rpc` and `config.ws` for Ethereum and Solana, `config.api` and `config.ws` for Bitcoin, `config.ws` for XRP, in each `chain.js`): they may rate-limit, and their operators see
 the IP address of the visitor and the addresses and transactions he looks up. Use your own node by changing those lists.
 
 ## Features of the engine that every chain gets
@@ -184,15 +185,16 @@ the IP address of the visitor and the addresses and transactions he looks up. Us
 1. Create `js/chains/<name>/chain.js` calling `Explorer.defineChain({...})`. The call lists every missing or mistyped field of
    the contract in one error, so you can start from an empty object and fill it in.
 2. Implement the data side: `data.*` (REST-like requests), `live.connect` (push events, in the shapes the contract describes)
-   and `createPending` (the towers of the pending block). Turn the chain's raw formats into the tower model
-   `{ txid, vsize, rate, coinbase?, approx? }` and the block model `{ id, height, previousblockhash, timestamp }`.
+   and, unless `nextBlock: false`, `live.trackNext` and `createPending` (the towers of the pending block). Turn the chain's raw formats into the tower model
+   `{ txid, vsize, rate, color?, coinbase?, approx? }` and the block model `{ id, height, previousblockhash, timestamp }`.
 3. Write its words: `blockCard`, `nextCard`, `blockLine`, `nextLine`, `feedRow`, `describeTower`.
 4. Optionally provide hooks (`openTx`, `openBlock`, `search`, `onBlock`, `onVisible`, `onHighlight`, `start`) for its own
    detail screens, search and statistics (call `Explorer.link.set(what)` when a screen opens: that is what makes the address bar a link). A chain without a hook simply has no such feature.
 5. Optionally state its look and shape: `theme.accent`, `rates.heightScale`, `rates.label`, `blockNumber`, `legend` (and a `color` on each tower) when colors are kinds rather than prices (`colorSwitch: true` to let the person choose), and `nextBlock: false`
    if there is no pending block to show (see the list of optional parts in `js/core/chain.js`).
-6. Make a page: copy `ethereum.html` (the simplest) and load the new chain's scripts instead; add the chain to the switch of the
-   other pages (a logo in `img/`) and a card to `index.html`. No build step: scripts only.
+6. Make a page: copy the closest one (`xrp.html` if there is no next block, `ethereum.html` if there is) and load the new chain's scripts instead, with its
+   own `css/<name>.css` and favicon; add the chain to the switch of the other pages (a logo in `img/`) and a card to `index.html` (the card's colour is
+   a `.card.<name>` rule in `css/style.css`). No build step: scripts only.
    A chain that speaks JSON-RPC can use `Explorer.jsonrpc.create` / `Explorer.jsonrpc.socket` from `js/net/jsonrpc.js`.
 7. Try it: open the page; a fake node that answers the same JSON is enough to see every screen if the real ones are unreachable.
 

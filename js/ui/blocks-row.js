@@ -49,7 +49,7 @@
     const lowest = card.offsetLeft + card.offsetWidth + EDGE - chain.clientWidth; // from here the card is clear of the right edge...
     const highest = card.offsetLeft - EDGE;                                       // ...up to here (clear of the left edge)
     const left = offset != null ? card.offsetLeft - offset : Math.min(Math.max(chain.scrollLeft, lowest), highest);
-    chain.scrollTo({ left, behavior: 'smooth' });
+    chain.scrollTo({ left, behavior: Explorer.dom.scrollBehavior() });
   }
 
   Explorer.ui.blocksRow = {

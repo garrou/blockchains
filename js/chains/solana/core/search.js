@@ -12,7 +12,8 @@
     const q = text.trim().replace(/^#/, '');
     if (/^[\d,]+$/.test(q) && /\d/.test(q)) {
       const slot = Number(q.replace(/,/g, ''));
-      return Number.isSafeInteger(slot) ? { type: 'slot', slot } : { type: 'unknown' };
+      if (Number.isSafeInteger(slot)) return { type: 'slot', slot };
+      // too long for a slot: it may still be a key written with digits only (the System Program is 32 times "1")
     }
     const kind = S.base58.kindOf(q);
     if (kind === 'signature') return { type: 'signature', signature: q };

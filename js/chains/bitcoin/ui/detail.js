@@ -66,16 +66,22 @@
   /** What an unconfirmed transaction can tell: when it is expected to be mined, whether it can be replaced, its family's rate. */
   function pendingRows(tx, rate, { upcoming, cpfp } = {}) {
     const rows = [];
-    const eta = Explorer.bitcoin.txs.eta(rate, upcoming);
+    const ancestors = (cpfp && cpfp.ancestors) || [], descendants = (cpfp && cpfp.descendants) || [];
+    const family = ancestors.length + descendants.length;
+    const packaged = family > 0 && Number.isFinite(cpfp.effectiveFeePerVsize); // miners look at the package, not at the transaction alone
+    const eta = Explorer.bitcoin.txs.eta(packaged ? cpfp.effectiveFeePerVsize : rate, upcoming);
     if (eta) {
-      rows.push(['Expected', eta.blocks === 1 ? 'in the next block (about 10 minutes)'
-        : eta.blocks ? `in about ${eta.blocks} blocks (${F.number(eta.blocks * 10)} minutes)`
-          : `not in the ${eta.beyond} blocks the mempool is projected into: more than ${F.number(eta.beyond * 10)} minutes at this fee rate`]);
+      const as = packaged ? ' (counting its family)' : '';
+      rows.push(['Expected', eta.blocks === 1 ? `in the next block (about 10 minutes)${as}`
+        : eta.blocks ? `in about ${eta.blocks}${eta.atLeast ? ' blocks or more' : ' blocks'} (${F.number(eta.blocks * 10)}${eta.atLeast ? '+' : ''} minutes)${as}`
+          : `not in the ${eta.beyond} blocks the mempool is projected into: more than ${F.number(eta.beyond * 10)} minutes at this fee rate${as}`]);
     }
-    rows.push(['Replaceable', Explorer.bitcoin.txs.signalsRbf(tx) ? 'yes (it signals replace-by-fee: the sender can replace it with one that pays more)' : 'it does not signal replace-by-fee']);
-    const family = cpfp && ((cpfp.ancestors || []).length + (cpfp.descendants || []).length);
-    if (family && Number.isFinite(cpfp.effectiveFeePerVsize)) {
-      rows.push(['With its family (CPFP)', `${cpfp.effectiveFeePerVsize.toFixed(1)} sat/vB for the package · ${F.number((cpfp.ancestors || []).length)} ancestor(s), ${F.number((cpfp.descendants || []).length)} descendant(s): miners look at the whole package`]);
+    // BIP125 (what the transaction itself says); a recent Bitcoin Core replaces transactions that do not signal too (full replace-by-fee)
+    rows.push(['Replace-by-fee', Explorer.bitcoin.txs.signalsRbf(tx)
+      ? 'it signals it (BIP125): the sender can replace it with a transaction that pays more'
+      : `it does not signal it (BIP125)${ancestors.length ? '; an unconfirmed ancestor that signals would make it replaceable' : ''}. Many nodes accept a replacement anyway (full replace-by-fee)`]);
+    if (packaged) {
+      rows.push(['With its family (CPFP)', `${F.rate(cpfp.effectiveFeePerVsize)} sat/vB for the package · ${F.number(ancestors.length)} ancestor(s), ${F.number(descendants.length)} descendant(s): miners look at the whole package`]);
     }
     return rows;
   }
@@ -99,7 +105,7 @@
           : 'Unconfirmed (mempool)'],
         ...(inTotal ? [['Total input', `${inTotal.partial ? '≥ ' : ''}${F.btc(inTotal.sum)}`]] : []),
         ['Total output', F.btc(Explorer.bitcoin.txs.outputTotal(tx))],
-        ['Fee', tx.vin?.[0]?.is_coinbase ? 'None (new coins)' : tx.fee != null ? `${F.number(tx.fee)} sats${rate != null ? ` (${rate.toFixed(1)} sat/vB)` : ''}` : '—'],
+        ['Fee', tx.vin?.[0]?.is_coinbase ? 'None (new coins)' : tx.fee != null ? `${F.number(tx.fee)} sats${rate != null ? ` (${F.rate(rate)} sat/vB)` : ''}` : '—'],
         ['Size', `${F.number(tx.size)} B · ${F.number(Math.ceil(tx.weight / 4))} vB`],
         ...(st.confirmed ? [] : pendingRows(tx, rate, extra)),
       ]), txCard(tx, false));
@@ -115,7 +121,7 @@
         ['Size', `${(b.size / 1e6).toFixed(2)} MB · ${(b.weight / 1e6).toFixed(2)} MWU`],
         ['Fill', `${F.fixed(Explorer.chain.fill(b) * 100)}% of capacity (4 MWU)`],
         ['Miner', x?.pool?.name ?? '—'],
-        ['Median fee', x?.medianFee != null ? `${x.medianFee.toFixed(1)} sat/vB` : '—'],
+        ['Median fee', x?.medianFee != null ? `${F.rate(x.medianFee)} sat/vB` : '—'],
         ...(x?.totalFees != null ? [['Total fees', F.btc(x.totalFees)]] : []),
         ...(b.previousblockhash ? [['Previous block', link(F.short(b.previousblockhash, 16, 8), () => handlers.onOpenBlock(b.previousblockhash), ' mono')]] : []), // absent for the genesis block
       ]), el('h3', {}, `First transactions (${txs.length} / ${F.number(b.tx_count)})`), txs.map((t) => txCard(t)));

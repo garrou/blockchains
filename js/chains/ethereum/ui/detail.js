@@ -72,6 +72,7 @@
       const { r, tx, receipt, block } = v;
       const x = X();
       const fee = E.txs.feeWei(r);
+      const blobFee = r.blobFeeWei ?? 0n; // what the blobs cost (type 3), on top of the gas
       const burnt = block?.baseFeeWei != null && r.gasUsed != null ? block.baseFeeWei * BigInt(r.gasUsed) : null;
       const input = tx.input && tx.input !== '0x' ? (tx.input.length - 2) / 2 : 0;
       const sel = r.selector && E.txs.SELECTORS[r.selector];
@@ -79,13 +80,15 @@
         ['Hash', mono(r.hash)],
         ['Status', receipt
           ? el('span', {}, statusPill(r.ok), ' in block ', blockLink(block ?? { id: receipt.blockHash, height: Number(x.big(receipt.blockNumber)) }), block ? ` · ${F.date(block.timestamp)}` : '')
-          : el('span', {}, el('span', { class: 'eth-status wait' }, 'Pending'), ' waiting in the mempool')],
+          : tx.blockNumber
+            ? el('span', {}, el('span', { class: 'eth-status wait' }, 'Included'), ' in a block; the node has no receipt for it yet')
+            : el('span', {}, el('span', { class: 'eth-status wait' }, 'Pending'), ' waiting in the mempool')],
         ['From', addr(r.from)],
         ['To', r.to ? addr(r.to) : el('span', {}, 'Contract creation', r.created ? el('span', {}, ' → ', addr(r.created)) : '')],
         ['Value', x.eth(r.valueWei, 9)],
         ['Action', E.txs.labelOf(r.kind, r.selector) + (sel ? ` · ${sel[0]}()` : '')],
         r.gasUsed != null
-          ? ['Fee', el('span', {}, x.eth(fee, 9), burnt != null ? el('small', { class: 'muted' }, ` · ${x.eth(burnt, 9)} burned, ${x.eth(fee - burnt, 9)} tip`) : '')]
+          ? ['Fee', el('span', {}, x.eth(fee, 9), burnt != null ? el('small', { class: 'muted' }, ` · ${x.eth(burnt, 9)} burned, ${x.eth(fee - blobFee - burnt, 9)} tip${blobFee > 0n ? `, ${x.eth(blobFee, 9)} for the blobs` : ''}`) : '')]
           : ['Max fee', `${x.eth(r.maxFee * BigInt(r.gasLimit), 9)} (${x.gwei(x.weiToGwei(r.maxFee))} gwei × gas limit)`],
         r.gasUsed != null ? ['Gas price', el('span', {}, `${x.gwei(r.price)} gwei`, block?.baseFee != null ? el('small', { class: 'muted' }, ` · base ${x.gwei(block.baseFee)}, tip ${x.gwei(Math.max(0, r.price - block.baseFee))}`) : '')] : null,
         ['Gas', r.gasUsed != null ? `${F.number(r.gasUsed)} used of ${F.number(r.gasLimit)} (${pct(r.gasUsed, r.gasLimit)})` : `${F.number(r.gasLimit)} limit`],
@@ -105,7 +108,7 @@
         ['Transactions', F.number(b.tx_count)],
         ['Gas used', `${F.number(b.gasUsed)} (${pct(b.gasUsed, b.gasLimit)} of ${x.gas(b.gasLimit)} · target 50%)`],
         b.baseFee != null ? ['Base fee', `${x.gwei(b.baseFee)} gwei · next block ${x.gwei(x.weiToGwei(E.blocks.nextBaseFee(b.baseFeeWei, b.gasUsed, b.gasLimit)))}`] : null,
-        ['Burned', `${b.burnt.toFixed(5)} ETH`],
+        ['Base fee burned', `${b.burnt.toFixed(5)} ETH${b.blobGasUsed ? ' (the blobs are burned too: not counted here)' : ''}`],
         ['Built by', b.builder ?? 'unknown'],
         ['Fee recipient', addr(b.miner)],
         ['Size', `${F.fixed(b.size / 1024, 1)} KB`],

@@ -51,13 +51,13 @@
   /**
    * When a transaction that pays `rate` sat/vB is expected to be mined, from the blocks the mempool is projected into (`upcoming`: the
    * `mempool-blocks` of the server, each with the `feeRange` of what it holds, lowest rate first): the first block whose lowest rate
-   * it reaches. { blocks: n } (n = 1: the next block), { beyond: n } when it is below all the n blocks projected, null when unknown.
+   * it reaches. { blocks: n } (n = 1: the next block; atLeast: the projected block is bigger than a block can be, it gathers all the overflow), { beyond: n } when it is below all the n blocks projected, null when unknown.
    */
   function eta(rate, upcoming) {
     if (!Number.isFinite(rate) || !Array.isArray(upcoming) || !upcoming.length) return null;
     for (let i = 0; i < upcoming.length; i++) {
       const lowest = upcoming[i] && upcoming[i].feeRange && upcoming[i].feeRange[0];
-      if (typeof lowest === 'number' && rate >= lowest) return { blocks: i + 1 };
+      if (typeof lowest === 'number' && rate >= lowest) return upcoming[i].blockVSize > 1.05e6 ? { blocks: i + 1, atLeast: true } : { blocks: i + 1 }; // a projected block bigger than a real one holds all the rest: it says "or more"
     }
     return { beyond: upcoming.length };
   }

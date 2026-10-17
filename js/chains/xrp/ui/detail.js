@@ -42,6 +42,12 @@
   /** What an exchange order says: it sells `TakerGets` for `TakerPays`. */
   const orderText = (tx) => `sells ${X.format.amount(tx.TakerGets)} for ${X.format.amount(tx.TakerPays)}`;
 
+  /** AccountRoot.Domain is the domain name written as hex ASCII: shown as text when it is, as it came otherwise. */
+  const domainText = (hex) => {
+    const bytes = String(hex).match(/^(?:[0-9a-f]{2})+$/i) ? String(hex).match(/../g).map((h) => parseInt(h, 16)) : null;
+    return bytes && bytes.length <= 255 && bytes.every((b) => b >= 0x21 && b <= 0x7e) ? String.fromCharCode(...bytes) : String(hex);
+  };
+
   Explorer.ui.detail = {
     /** handlers: onOpenTx(hash), onOpenLedger(hash or index), onOpenAccount(address), onShowInScene() (null without 3D) */
     init(h) { handlers = h; },
@@ -102,7 +108,7 @@
         ['Balance', a ? f.xrp(a.Balance) : 'Does not exist on chain (never funded)'],
         a ? ['Objects owned', F.number(a.OwnerCount ?? 0)] : null,
         a ? ['Next sequence', F.number(a.Sequence ?? 0)] : null,
-        a && a.Domain ? ['Domain', mono(a.Domain)] : null,
+        a && a.Domain ? ['Domain', mono(domainText(a.Domain))] : null,
         a && a.RegularKey ? ['Regular key', addr(a.RegularKey, { short: true })] : null,
       ]),
       el('h3', {}, v.history ? `Latest transactions (${v.history.length})` : 'Latest transactions'),

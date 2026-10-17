@@ -42,10 +42,12 @@
 
   const selectorOf = (input) => (input && input.length >= 10 ? input.slice(0, 10).toLowerCase() : null);
 
-  /** 'create' (no recipient), 'blob' (carries blobs), 'transfer' (plain ETH, no data), 'call' (a contract is called). */
+  /** 'create' (no recipient), 'blob' (carries blobs), 'transfer' (plain ETH, no data), 'call' (a contract is called, or a set-code transaction). */
   function kindOf(tx) {
     if (tx.to == null) return 'create';
-    if (Number(big(tx.type ?? 0)) === 3) return 'blob';
+    const type = Number(big(tx.type ?? 0));
+    if (type === 3) return 'blob';
+    if (type === 4) return 'call'; // set-code (EIP-7702): a delegation, even with no data
     return !tx.input || tx.input === '0x' ? 'transfer' : 'call';
   }
 
@@ -103,6 +105,7 @@
       selector,
       kind,
       blobs: Array.isArray(tx.blobVersionedHashes) ? tx.blobVersionedHashes.length : 0,
+      blobFeeWei: receipt?.blobGasUsed != null && receipt?.blobGasPrice != null ? big(receipt.blobGasUsed) * big(receipt.blobGasPrice) : 0n, // what the blobs cost on top of the gas (type 3)
     };
   }
 
@@ -116,7 +119,7 @@
     return rows;
   }
 
-  const feeWei = (r) => (r.gasUsed == null ? null : r.priceWei * BigInt(r.gasUsed));
+  const feeWei = (r) => (r.gasUsed == null ? null : r.priceWei * BigInt(r.gasUsed) + (r.blobFeeWei ?? 0n)); // gas + blobs
 
   /** The tower of a mined transaction. */
   function towerOf(r) {

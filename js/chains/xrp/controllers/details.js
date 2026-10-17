@@ -101,10 +101,11 @@
       let data = null;
       if (info.status === 'fulfilled') data = info.value.account_data ?? null;
       else if (info.reason.code !== 'actNotFound') throw info.reason;
-      const lines = history.status === 'fulfilled' ? X.wallet.entries(history.value.lines) : null;
+      const unfunded = history.status === 'rejected' && history.reason.code === 'actNotFound'; // an account that was never funded: no transactions, nothing failed
+      const lines = history.status === 'fulfilled' ? X.wallet.entries(history.value.lines) : unfunded ? [] : null;
       if (!wanted(token)) return;
-      if (lines) shown = { address, lines, marker: history.value.marker };
-      Explorer.ui.detail.address({ address, data, history: lines && lines.slice(0, Explorer.chain.config.historyShown), historyError: history.status === 'rejected' ? history.reason.message : null, canTrack: !!lines?.length });
+      if (lines && history.status === 'fulfilled') shown = { address, lines, marker: history.value.marker };
+      Explorer.ui.detail.address({ address, data, history: lines && lines.slice(0, Explorer.chain.config.historyShown), historyError: history.status === 'rejected' && !unfunded ? history.reason.message : null, canTrack: !!lines?.length });
     } catch (e) {
       if (wanted(token)) Explorer.ui.detail.message(e.code === 'actMalformed' ? 'Not a valid XRP Ledger address.' : `Account lookup failed (${e.message})`);
     }

@@ -17,6 +17,9 @@
     return n;
   }
 
-  Explorer.dom = { $, el };
+  /** 'smooth' for the scrolling the page does by itself, 'auto' (at once) for a person who asked for less motion. */
+  const scrollBehavior = () => (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+
+  Explorer.dom = { $, el, scrollBehavior };
   Explorer.ui = Explorer.ui || {};
 })();

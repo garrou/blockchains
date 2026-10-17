@@ -29,7 +29,7 @@
         const [name, symbol, decimals] = answers.map((r) => (r instanceof Error ? null : r));
         const dec = decimals && decimals !== '0x' ? Number(E.abi.uint(decimals)) : null;
         const info = {
-          name: E.abi.decodeText(name), symbol: E.abi.decodeText(symbol),
+          name: E.abi.decodeText(name)?.slice(0, 48) ?? null, symbol: E.abi.decodeText(symbol)?.slice(0, 20) ?? null, // a hostile contract may answer anything, as long as it likes
           decimals: dec != null && Number.isInteger(dec) && dec <= 77 ? dec : null, // a hostile contract may answer anything
         };
         // a call that failed (rate limit, timeout) is not remembered as "not a token": only real answers (even reverts) are

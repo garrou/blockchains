@@ -87,8 +87,10 @@
       retryTimers.delete(b.id);
       retryCount.set(b.id, (retryCount.get(b.id) || 0) + 1);
       if (!wantsDetail(b)) { status.delete(b.id); updateMessage(); return; } // no longer shown in detail: drop the retry
+      const held = cache.get(b.id);
+      if (held && held.txs && !held.txs.approx) { status.delete(b.id); updateMessage(); return; } // it came by another way meanwhile: nothing to read again
       cache.delete(b.id);
-      load(b);
+      load(b, true);
     }, S.retryMs));
     return true;
   }
@@ -100,8 +102,10 @@
   }
 
   /** Draws the contents of a block in its slot: at once when they are known, otherwise after downloading them. */
-  async function load(b) {
+  async function load(b, force = false) {
     let entry = cache.get(b.id);
+    // a block that failed waits for its retry (or for a click on it): it is not asked for again at every sync, which would defeat the delay
+    if (!entry && !force && (status.get(b.id) === 'error' || status.get(b.id) === 'failed')) return;
     if (entry) { cache.delete(b.id); cache.set(b.id, entry); } // most recently used
     else { entry = download(b); cache.set(b.id, entry); trim(); }
     if (!entry.txs) { // not here yet: a light shape stands in until the detail arrives
