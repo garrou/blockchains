@@ -15,7 +15,7 @@
     return err;
   }
 
-  const light = (by) => X.ws.call('ledger', { ...by, transactions: true, expand: false }).then(X.blocks.normalize);
+  const light = (by, opts) => X.ws.call('ledger', { ...by, transactions: true, expand: false }, opts).then(X.blocks.normalize);
 
   /** The ledgers of these indexes (newest first). One that is missing is skipped; none at all is a failure to retry. */
   async function ledgers(indexes) {

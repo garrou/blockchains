@@ -40,13 +40,16 @@
       // public servers (WebSocket), tried in this order; change them to use your own
       ws: ['wss://xrplcluster.com', 'wss://s1.ripple.com', 'wss://s2.ripple.com'],
       rpcTimeoutMs: 20000,
+      maxInFlight: 4,                                 // commands out at once: the public servers give a budget (about 2,000 units per 10 s) and answer "tooBusy" beyond it
+      maxRetries: 4,                                  // times a command refused as too busy is asked again (after the delay the server gives)
+      queueTimeoutMs: 60000,                          // a command that could not even be sent after this long is given up
       baseFee: 10,                                    // the reference fee, in drops: a tower's rate is its fee in multiples of it
       pageSize: 15,                                   // ledgers per request of the list
       txRef: 300,                                     // a busy ledger, in transactions: what the card's fill bar is relative to
       maxCatchUp: 4,                                  // ledgers the page may be behind before it asks the engine to reload the list
       wsStaleMs: 25000,                               // a WebSocket that says nothing for this long is dropped and opened again (a ledger every ~4 s)
       feedPerBlock: 12,                               // transactions of each new ledger that go to the feed
-      stats: { refreshMs: 15000, localMs: 2000, dayMs: 600000, daySamples: 36 }, // the statistics bar: asked of the server / redrawn from what is held; the transactions of a day estimated every dayMs from daySamples ledgers
+      stats: { refreshMs: 15000, localMs: 2000, dayMs: 600000, dayDelayMs: 30000, daySamples: 36 }, // the statistics bar: asked of the server / redrawn from what is held; the transactions of a day estimated every dayMs from daySamples ledgers
       historyShown: 12,                               // transactions listed on an account page
     },
 

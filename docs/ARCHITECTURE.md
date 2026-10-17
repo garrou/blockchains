@@ -126,6 +126,9 @@ and a `legend` of kinds (see `legend` in `js/core/chain.js`). The footprint is t
 (the `AffectedNodes` of its metadata); the height is the fee in multiples of the reference fee, flat for almost all and a spike for
 the rare one that paid more. The page needs no HTTP request: the commands (`ledger`, `tx`, `account_info`, `account_tx`, `fee`) travel
 over the same WebSocket as the ledgers that close (`data/ws.js`), which also avoids asking the servers for cross-origin permission.
+The public servers give each client a budget (about 2,000 units per 10 seconds) and answer `tooBusy` beyond it. `data/ws.js` therefore
+keeps at most 4 commands out at once, serves a person's request before the background ones (the estimate of the day), and when a
+server says `retry in ~6379ms` it stops sending for that long and asks again (up to 4 times, then the dialog says why).
 The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
 
 Default nodes are public ones (`config.rpc` and `config.ws` in each `chain.js`): they may rate-limit, and their operators see

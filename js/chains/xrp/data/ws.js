@@ -9,9 +9,12 @@
   const cfg = () => Explorer.chain.config;
 
   const NOT_FOUND = new Set(['lgrNotFound', 'ledgerNotFound', 'txnNotFound', 'actNotFound', 'entryNotFound', 'objectNotFound']);
+  const TOO_BUSY = new Set(['tooBusy', 'slowDown']); // the public servers give each client a budget (about 2,000 units per 10 s)
 
   let ctl = null, open = false, nextId = 1, handlers = {};
-  const waiting = new Map(); // id -> { resolve, reject, timer, msg, sent }
+  let inFlight = 0, pausedUntil = 0, pumpTimer = 0;
+  const waiting = new Map(); // id -> { resolve, reject, timer, msg, sent (on the wire), counted (takes one of the places), retries, background }
+  let queue = [];            // commands not sent yet: the ones a person asked for first, the background ones after
 
   function failure(msg) {
     const err = new Error(msg.error_message || msg.error || 'request failed');
@@ -21,47 +24,93 @@
     return err;
   }
 
+  /** How long the server asks us to wait ("retry in ~6379ms"), within reason. */
+  function retryDelay(msg) {
+    const m = /retry in ~?(\d+)\s*ms/i.exec(msg.error_message ?? '');
+    return Math.min(15000, Math.max(1000, m ? Number(m[1]) + 250 : 3000));
+  }
+
+  /** Sends what can be sent: at most `maxInFlight` commands at a time, none while the server asked for a pause. */
+  function pump() {
+    clearTimeout(pumpTimer);
+    if (!open || !ctl) return;
+    const wait = pausedUntil - Date.now();
+    if (wait > 0) { pumpTimer = setTimeout(pump, wait); return; }
+    while (inFlight < cfg().maxInFlight && queue.length) {
+      const e = queue.shift();
+      clearTimeout(e.queueTimer);
+      e.sent = e.counted = true;
+      inFlight++;
+      e.timer = setTimeout(() => { if (waiting.has(e.msg.id)) { release(e); e.reject(new Error('timeout')); pump(); } }, cfg().rpcTimeoutMs);
+      ctl.send(e.msg);
+    }
+  }
+
+  /** The command is answered (or lost): its place is free. */
+  function release(e) {
+    waiting.delete(e.msg.id);
+    clearTimeout(e.timer);
+    if (e.counted) inFlight = Math.max(0, inFlight - 1);
+    e.counted = false;
+  }
+
   /**
-   * One command: resolves with the `result`, rejects with an Error (`.status` 404 when the thing does not exist). A command asked
-   * while the socket is down waits for it to come back, up to the timeout.
+   * One command: resolves with the `result`, rejects with an Error (`.status` 404 when the thing does not exist). Commands wait their
+   * turn (see pump) and while the socket is down. opts.background: for what nobody is waiting for (it goes after the others).
    */
-  function call(command, params = {}) {
+  function call(command, params = {}, opts = {}) {
     return new Promise((resolve, reject) => {
       const id = nextId++;
-      const msg = { id, command, ...params };
-      const timer = setTimeout(() => { waiting.delete(id); reject(new Error('timeout')); }, cfg().rpcTimeoutMs);
-      const entry = { resolve, reject, timer, msg, sent: false };
-      waiting.set(id, entry);
-      if (open && ctl) { ctl.send(msg); entry.sent = true; }
+      const e = { resolve, reject, msg: { id, command, ...params }, sent: false, retries: 0, background: !!opts.background, timer: 0 };
+      e.queueTimer = setTimeout(() => { // still not sent after a long wait: give up
+        if (!e.sent && waiting.delete(id)) { queue = queue.filter((q) => q !== e); reject(new Error('timeout')); }
+      }, cfg().queueTimeoutMs);
+      waiting.set(id, e);
+      const firstBackground = queue.findIndex((q) => q.background);
+      if (e.background || firstBackground < 0) queue.push(e); else queue.splice(firstBackground, 0, e); // a person's command goes before the background ones
+      pump();
     });
   }
 
   function onOpen(send, c) {
     ctl = c;
     open = true;
-    for (const e of waiting.values()) if (!e.sent) { send(e.msg); e.sent = true; } // asked while the socket was down
+    inFlight = 0;
     const id = nextId++;
     const timer = setTimeout(() => { waiting.delete(id); c.close(); }, cfg().rpcTimeoutMs); // a server that does not answer the subscription is replaced
     waiting.set(id, {
-      timer, sent: true,
+      timer, sent: true, counted: false, msg: { id },
       resolve: (result) => { c.ready(); handlers.onSubscribed?.(result); },
       reject: () => c.close(),
     });
-    send({ id, command: 'subscribe', streams: ['ledger'] });
+    send({ id, command: 'subscribe', streams: ['ledger'] }); // not counted: it is the one line that must open
+    pump(); // what was asked while the socket was down
   }
 
   function onMessage(msg) {
     if (msg.type === 'response' && waiting.has(msg.id)) {
       const e = waiting.get(msg.id);
-      waiting.delete(msg.id);
-      clearTimeout(e.timer);
+      if (msg.status === 'error' && TOO_BUSY.has(msg.error) && e.msg.command && e.retries < cfg().maxRetries) {
+        // the server's budget is spent: wait as long as it says, then ask again (nothing is sent in between)
+        release(e);
+        e.retries++; e.sent = false;
+        waiting.set(e.msg.id, e);
+        queue.unshift(e);
+        pausedUntil = Math.max(pausedUntil, Date.now() + retryDelay(msg));
+        pump();
+        return;
+      }
+      release(e);
       if (msg.status === 'error' || msg.error) e.reject(failure(msg)); else e.resolve(msg.result ?? msg);
+      pump();
     } else if (msg.type === 'ledgerClosed') handlers.onLedger?.(msg);
   }
 
   function onClose() {
     open = false;
-    for (const [id, e] of waiting) { // what was on its way is lost; what was not sent yet waits for the next connection
+    inFlight = 0;
+    clearTimeout(pumpTimer);
+    for (const [id, e] of [...waiting]) { // what was on its way is lost; what was not sent yet waits for the next connection
       if (!e.sent) continue;
       waiting.delete(id);
       clearTimeout(e.timer);

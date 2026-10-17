@@ -8,6 +8,7 @@
 
   let fee = null;
   let dayAt = 0, dayRunning = false;
+  const bootedAt = Date.now();
 
   /** Redraws what comes from the ledgers the page holds (cheap, no request). */
   function refreshLocal() {
@@ -56,7 +57,7 @@
 
   async function refreshDay() {
     const cfg = Explorer.chain.config.stats;
-    if (dayRunning || document.hidden || Date.now() - dayAt < cfg.dayMs) return;
+    if (dayRunning || document.hidden || Date.now() - dayAt < cfg.dayMs || Date.now() - bootedAt < cfg.dayDelayMs) return; // not while the page is still loading its ledgers
     const blocks = Explorer.nav.liveBlocks();
     if (blocks.length < 2) return;
     dayRunning = true;
@@ -65,7 +66,7 @@
       if (!(closeSeconds > 0)) throw new Error('no close time');
       const perDay = Math.round(86400 / closeSeconds), top = blocks[0].height;
       const indexes = Array.from({ length: cfg.daySamples }, (_, i) => top - Math.round((i * perDay) / cfg.daySamples));
-      const res = await Promise.allSettled(indexes.map((i) => X.data.light({ ledger_index: i })));
+      const res = await Promise.allSettled(indexes.map((i) => X.data.light({ ledger_index: i }, { background: true })));
       const counts = res.filter((r) => r.status === 'fulfilled').map((r) => r.value.tx_count);
       if (counts.length < Math.ceil(cfg.daySamples / 2)) throw new Error('too few ledgers could be read');
       Explorer.ui.statsBar.renderDay({
@@ -73,7 +74,10 @@
         sub: `estimated from ${F.number(counts.length)} of the last ${F.number(perDay)} ledgers`,
       });
       dayAt = Date.now();
-    } catch (e) { console.warn('transactions per day', e); } finally { dayRunning = false; }
+    } catch (e) {
+      console.warn('transactions per day', e);
+      dayAt = Date.now() - cfg.dayMs + 60000; // tried again in a minute, not at the next refresh
+    } finally { dayRunning = false; }
   }
 
   function start() {
