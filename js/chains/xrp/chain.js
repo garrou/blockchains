@@ -46,7 +46,7 @@
       maxCatchUp: 4,                                  // ledgers the page may be behind before it asks the engine to reload the list
       wsStaleMs: 25000,                               // a WebSocket that says nothing for this long is dropped and opened again (a ledger every ~4 s)
       feedPerBlock: 12,                               // transactions of each new ledger that go to the feed
-      stats: { refreshMs: 15000, localMs: 2000 },     // the statistics bar: asked of the server / redrawn from what is held
+      stats: { refreshMs: 15000, localMs: 2000, dayMs: 600000, daySamples: 36 }, // the statistics bar: asked of the server / redrawn from what is held; the transactions of a day estimated every dayMs from daySamples ledgers
       historyShown: 12,                               // transactions listed on an account page
     },
 

@@ -21,6 +21,8 @@
       }
       if (m.difficulty) setValue('st-diff', F.fixed(m.difficulty / 1e12, 2), 'T');
     },
+    /** m: { value (text), sub } */
+    renderDay(m) { setValue('st-day', m.value, 'tx'); $('#st-day-sub').textContent = m.sub; },
     /** m: result of Explorer.bitcoin.stats.fromAdjustment */
     renderAdjustment(m) {
       if (m.change != null) {

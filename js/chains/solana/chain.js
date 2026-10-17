@@ -37,7 +37,7 @@
       wsStaleMs: 15000,                               // a WebSocket that says nothing for this long is dropped and opened again (a slot every 0.4 s)
       pollMs: 5000,                                   // looking at the head slot when the WebSocket is down
       feedPerBlock: 12,                               // transactions of each new block that go to the feed
-      stats: { refreshMs: 15000, localMs: 2000 },     // the statistics bar: asked of the node / redrawn from what is held
+      stats: { refreshMs: 15000, localMs: 2000, dayMs: 600000 }, // the statistics bar: asked of the node / redrawn from what is held; the transactions of a day recounted every dayMs
       historyShown: 12,                               // transactions listed on an address page
       logLines: 40,                                   // lines of the program log shown on a transaction page
     },

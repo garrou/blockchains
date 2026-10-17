@@ -23,6 +23,11 @@
       $('#st-util-sub').textContent = m.sub;
       $('#st-util-bar').style.width = `${Math.min(100, Math.max(0, m.bar))}%`;
     },
+    /** m: { value (text), sub } */
+    renderDay(m) {
+      setValue('st-day', m.value, 'tx');
+      $('#st-day-sub').textContent = m.sub;
+    },
     renderBurn(m) {
       setValue('st-burn', m.value, 'ETH');
       $('#st-burn-sub').textContent = m.sub;

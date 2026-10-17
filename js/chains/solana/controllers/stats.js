@@ -7,6 +7,7 @@
   const F = Explorer.format;
 
   let epoch = null, perf = null;
+  let dayAt = 0, dayRunning = false;
 
   /** Redraws what comes from the blocks the page holds (cheap, no request). */
   function refreshLocal() {
@@ -26,6 +27,34 @@
     if (epoch) Explorer.ui.statsBar.renderEpoch(epoch);
   }
 
+  /**
+   * The transactions of a day, from the performance samples the node keeps (one per minute, about 12 hours at most): the rate
+   * over all of them, scaled to 24 hours. Votes (most of Solana's transactions) are left out of the figure when the node tells them apart.
+   */
+  function dayFromSamples(samples) {
+    const secs = samples.reduce((s, x) => s + (x.samplePeriodSecs || 60), 0);
+    const total = samples.reduce((s, x) => s + (x.numTransactions || 0), 0);
+    const hasVotes = samples.every((x) => typeof x.numNonVoteTransactions === 'number');
+    const user = hasVotes ? samples.reduce((s, x) => s + x.numNonVoteTransactions, 0) : null;
+    const perDay = (n) => (n / secs) * 86400;
+    return { hours: secs / 3600, total: perDay(total), user: user != null ? perDay(user) : null };
+  }
+
+  async function refreshDay() {
+    if (dayRunning || document.hidden || Date.now() - dayAt < Explorer.chain.config.stats.dayMs) return;
+    dayRunning = true;
+    try {
+      const samples = await S.rpc.call('getRecentPerformanceSamples', [720]);
+      if (!Array.isArray(samples) || !samples.length) throw new Error('no samples');
+      const d = dayFromSamples(samples), round = (n) => Math.round(n / 1000) * 1000;
+      Explorer.ui.statsBar.renderDay({
+        value: `≈ ${F.number(round(d.user ?? d.total))}`,
+        sub: d.user != null ? `${F.number(round(d.total))} with the votes · from the last ${F.fixed(d.hours, 1)} h` : `votes included · from the last ${F.fixed(d.hours, 1)} h`,
+      });
+      dayAt = Date.now();
+    } catch (e) { console.warn('transactions per day', e); } finally { dayRunning = false; }
+  }
+
   /** Asks the node: the transaction rate over the last minute, the epoch. */
   async function refresh() {
     const [samples, info] = await Promise.allSettled([S.rpc.call('getRecentPerformanceSamples', [1]), S.rpc.call('getEpochInfo', [{ commitment: 'confirmed' }])]);
@@ -40,6 +69,7 @@
       epoch = { value: `#${F.number(e.epoch)}`, bar: progress, sub: `${F.fixed(progress)}% · ends in ~${F.duration(msLeft)}` };
     } else console.warn('epoch', info.reason);
     refreshLocal();
+    refreshDay(); // only does something when the last count is older than dayMs
   }
 
   function start() {
@@ -49,5 +79,5 @@
     setInterval(refresh, Explorer.chain.config.stats.refreshMs);
   }
 
-  S.statsCtl = { refresh, refreshLocal, start };
+  S.statsCtl = { refresh, refreshLocal, refreshDay, dayFromSamples, start };
 })();

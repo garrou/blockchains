@@ -12,6 +12,8 @@
   Explorer.ui.statsBar = {
     /** m: { value, sub } */
     renderSlot(m) { setValue('st-slot', m.value); $('#st-slot-sub').textContent = m.sub; },
+    /** m: { value (text), sub } */
+    renderDay(m) { setValue('st-day', m.value, 'tx'); $('#st-day-sub').textContent = m.sub; },
     renderTps(m) { setValue('st-tps', m.value, 'tx/s'); $('#st-tps-sub').textContent = m.sub; },
     renderMix(m) { setValue('st-mix', m.value, '% votes'); $('#st-mix-sub').textContent = m.sub; },
     /** m: { value, sub, bar: 0..100 } */

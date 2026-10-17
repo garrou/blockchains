@@ -14,6 +14,8 @@
     renderLedger(m) { setValue('st-ledger', m.value); $('#st-ledger-sub').textContent = m.sub; },
     renderTps(m) { setValue('st-tps', m.value, 'tx/s'); $('#st-tps-sub').textContent = m.sub; },
     renderMix(m) { setValue('st-mix', m.value, '% payments'); $('#st-mix-sub').textContent = m.sub; },
+    /** m: { value (text), sub } */
+    renderDay(m) { setValue('st-day', m.value, 'tx'); $('#st-day-sub').textContent = m.sub; },
     renderFee(m) { setValue('st-fee', m.value, 'drops'); $('#st-fee-sub').textContent = m.sub; },
   };
 })();

@@ -7,6 +7,7 @@
   const F = Explorer.format;
 
   let fee = null;
+  let dayAt = 0, dayRunning = false;
 
   /** Redraws what comes from the ledgers the page holds (cheap, no request). */
   function refreshLocal() {
@@ -28,6 +29,7 @@
       });
     }
     if (fee) Explorer.ui.statsBar.renderFee(fee);
+    refreshDay(); // only does something when the last estimate is older than dayMs (and once there are ledgers to measure the pace on)
   }
 
   /** Asks the server: what a transaction costs now, and how full the queue is. */
@@ -43,6 +45,37 @@
     refreshLocal();
   }
 
+  /**
+   * The transactions of a day, estimated: the transactions of `daySamples` ledgers spread over the last 24 hours, times the ledgers
+   * of the day (86,400 s over the average time between two ledgers, measured on the ledgers held).
+   */
+  function dayEstimate(counts, closeSeconds) {
+    const mean = counts.reduce((s, c) => s + c, 0) / counts.length;
+    return mean * (86400 / closeSeconds);
+  }
+
+  async function refreshDay() {
+    const cfg = Explorer.chain.config.stats;
+    if (dayRunning || document.hidden || Date.now() - dayAt < cfg.dayMs) return;
+    const blocks = Explorer.nav.liveBlocks();
+    if (blocks.length < 2) return;
+    dayRunning = true;
+    try {
+      const closeSeconds = (blocks[0].timestamp - blocks.at(-1).timestamp) / (blocks.length - 1);
+      if (!(closeSeconds > 0)) throw new Error('no close time');
+      const perDay = Math.round(86400 / closeSeconds), top = blocks[0].height;
+      const indexes = Array.from({ length: cfg.daySamples }, (_, i) => top - Math.round((i * perDay) / cfg.daySamples));
+      const res = await Promise.allSettled(indexes.map((i) => X.data.light({ ledger_index: i })));
+      const counts = res.filter((r) => r.status === 'fulfilled').map((r) => r.value.tx_count);
+      if (counts.length < Math.ceil(cfg.daySamples / 2)) throw new Error('too few ledgers could be read');
+      Explorer.ui.statsBar.renderDay({
+        value: `≈ ${F.number(Math.round(dayEstimate(counts, closeSeconds) / 1000) * 1000)}`,
+        sub: `estimated from ${F.number(counts.length)} of the last ${F.number(perDay)} ledgers`,
+      });
+      dayAt = Date.now();
+    } catch (e) { console.warn('transactions per day', e); } finally { dayRunning = false; }
+  }
+
   function start() {
     refreshLocal();
     refresh();
@@ -50,5 +83,5 @@
     setInterval(refresh, Explorer.chain.config.stats.refreshMs);
   }
 
-  X.statsCtl = { refresh, refreshLocal, start };
+  X.statsCtl = { refresh, refreshLocal, refreshDay, dayEstimate, start };
 })();

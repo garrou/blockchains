@@ -28,5 +28,14 @@
     };
   }
 
-  Explorer.bitcoin.stats = { fromHashrate, fromAdjustment };
+  /**
+   * The transactions of the last 24 hours, from the blocks (newest first, with `timestamp` and `tx_count`): the sum over the blocks
+   * mined in the last 86,400 s before `nowSec`. complete: false when the blocks do not reach back a whole day (the figure is then low).
+   */
+  function txPerDay(blocks, nowSec) {
+    const since = nowSec - 86400, day = blocks.filter((b) => b.timestamp > since);
+    return { count: day.reduce((s, b) => s + (b.tx_count || 0), 0), blocks: day.length, complete: blocks.some((b) => b.timestamp <= since) };
+  }
+
+  Explorer.bitcoin.stats = { fromHashrate, fromAdjustment, txPerDay };
 })();

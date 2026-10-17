@@ -93,6 +93,15 @@ Provisional data: if a mined block's towers are not known precisely yet (`approx
 | address page | totals + transactions | balance, nonce, contract or wallet, token name, ENS | balance, owner program, token holdings, latest transactions | balance, objects owned, latest transactions |
 | tracked address in 3D ("Show in 3D") | yes | **no** | **no** | not yet (`account_tx` would allow it) |
 
+The statistics bar of each chain ends with **Transactions / day**. How it is counted depends on what the chain lets a page read:
+
+| | How | Exact? |
+|---|---|---|
+| Bitcoin | the sum of `tx_count` of the blocks mined in the last 24 h (the blocks held, then pages of 15 older ones: about 10 requests, every 10 minutes) | yes, to the block |
+| Ethereum | `eth_getBlockTransactionCountByNumber` for 48 blocks spread over the last 7,200, scaled to the day | an estimate, a few percent |
+| Solana | `getRecentPerformanceSamples`: the node keeps about 12 hours of one-minute samples; the rate over them, scaled to 24 h. The figure leaves the votes out when the node tells them apart (`numNonVoteTransactions`) | an extrapolation of 12 hours |
+| XRP Ledger | `ledger` for 36 ledgers spread over the last ~21,600, scaled to the day | an estimate, a few percent |
+
 Why no tracked address on Ethereum and Solana. On Bitcoin the page lights up the towers of an address: it can, because the
 mempool.space API lists every transaction of an address. A plain Ethereum node cannot (it takes an indexer such as Etherscan,
 which needs a key). A Solana node does list the signatures of an address, but the page only draws one block in ten, so most of

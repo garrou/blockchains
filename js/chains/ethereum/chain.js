@@ -38,7 +38,7 @@
       projectMs: 1000,                                // the guess of the next block is refreshed at most this often
       pending: { fetchPerSec: 20, tickMs: 500 },      // pending transactions fetched per second (a sample of the mempool is enough)
       pool: { max: 4000, ttlMs: 20 * 60e3 },          // pending transactions kept, and how long
-      stats: { refreshMs: 2000, finalityMs: 60000 }, // the statistics bar: redrawn from the blocks held (cheap), finality asked of the node
+      stats: { refreshMs: 2000, finalityMs: 60000, dayMs: 600000, daySamples: 48 }, // the statistics bar: redrawn from the blocks held (cheap), finality asked of the node; the transactions of a day estimated every dayMs from daySamples blocks
       ensRegistry: '0x00000000000c2e074ec69a0dfb2997ba6c7d2e1e', // ENS: who resolves a name
       logsShown: 12,                                  // token movements listed on a transaction page
     },

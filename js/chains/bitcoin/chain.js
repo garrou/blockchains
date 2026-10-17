@@ -34,7 +34,7 @@
       ws: 'wss://mempool.space/api/v1/ws',
       apiTimeoutMs: 20000,                                    // a request that takes longer is given up (a stuck one would block its screen for good)
       summaryMinRatio: 0.95,                                  // a block summary with fewer rows than this share of tx_count is incomplete
-      stats: { jPerTh: 25, refreshMs: 60000, minGapMs: 15000 },
+      stats: { jPerTh: 25, refreshMs: 60000, minGapMs: 15000, dayRefreshMs: 600000, dayPagesMax: 12 }, // dayRefreshMs: the transactions of the day are counted again this often; dayPagesMax: pages of 15 blocks read at most
       wallet: { pollMs: 30000, afterBlockMs: 3000 },          // see controllers/wallet.js
     },
 

@@ -10,6 +10,7 @@
   const SLOT_S = 12;       // seconds per block
   const WINDOW = 15;       // blocks the averages cover
   let finalized = null;    // number of the latest finalized block
+  let dayAt = 0, dayRunning = false;
 
   const sum = (list, f) => list.reduce((s, b) => s + f(b), 0);
 
@@ -18,6 +19,7 @@
     const blocks = Explorer.nav.liveBlocks().slice(0, WINDOW); // the latest blocks, even while the view shows an old searched block
     const last = blocks[0];
     if (!last) return;
+    refreshDay(); // only does something when the last estimate is older than dayMs
     const x = X();
 
     // the base fee of the next block: known from the last one (EIP-1559), and it is what the guess uses
@@ -60,6 +62,42 @@
     } catch (e) { console.warn('finality', e); }
   }
 
+  /**
+   * The transactions of a day, estimated: the number of transactions of `daySamples` blocks spread over the last 24 hours, times
+   * the blocks of the day. Counting them all would take 7,200 requests; the blocks vary little, so a sample is within a few percent.
+   */
+  function dayEstimate(counts, blocksSpan, secondsSpan) {
+    const mean = counts.reduce((s, c) => s + c, 0) / counts.length;
+    return mean * blocksSpan * (86400 / secondsSpan);
+  }
+
+  async function refreshDay() {
+    const cfg = Explorer.chain.config.stats;
+    if (dayRunning || document.hidden || Date.now() - dayAt < cfg.dayMs) return;
+    const tip = Explorer.nav.liveBlocks()[0];
+    if (!tip) return;
+    dayRunning = true;
+    try {
+      const span = Math.round(86400 / SLOT_S);                 // blocks in a day (7,200)
+      const from = Math.max(1, tip.height - span);
+      const heights = Array.from({ length: cfg.daySamples }, (_, i) => tip.height - Math.round((i * (tip.height - from)) / cfg.daySamples));
+      const hex = (n) => E.data.hex(n);
+      const res = await E.rpc.batch([['eth_getBlockByNumber', [hex(from), false]], ...heights.map((h) => ['eth_getBlockTransactionCountByNumber', [hex(h)]])]);
+      const [oldest, ...counts] = res;
+      const ok = counts.filter((c) => c && !(c instanceof Error)).map((c) => Number(X().big(c)));
+      if (!ok.length || !oldest || oldest instanceof Error) throw new Error('the node did not answer');
+      const seconds = tip.timestamp - Number(X().big(oldest.timestamp));
+      const blocks = tip.height - from;
+      if (!(seconds > 0)) throw new Error('no time span');
+      const est = dayEstimate(ok, blocks, seconds);
+      Explorer.ui.statsBar.renderDay({
+        value: `≈ ${F.number(Math.round(est / 1000) * 1000)}`,
+        sub: `estimated from ${F.number(ok.length)} of the last ${F.number(blocks)} blocks · ${F.fixed(seconds / 3600, 1)} h`,
+      });
+      dayAt = Date.now();
+    } catch (e) { console.warn('transactions per day', e); } finally { dayRunning = false; }
+  }
+
   function start() {
     refresh();
     refreshFinality();
@@ -67,5 +105,5 @@
     setInterval(refreshFinality, Explorer.chain.config.stats.finalityMs);
   }
 
-  E.statsCtl = { refresh, refreshFinality, start };
+  E.statsCtl = { refresh, refreshFinality, refreshDay, dayEstimate, start };
 })();
