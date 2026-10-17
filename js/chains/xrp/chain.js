@@ -88,11 +88,11 @@
     // ----- words -----
     blockCard: (b) => ({
       title: `#${F().number(b.height)}`,
-      lines: [`${F().number(b.tx_count)} tx`, b.closedIn != null ? `closed after ${b.closedIn} s` : '—'],
+      lines: [`${F().number(b.tx_count)} tx`, `closed ${XF().clock(b.timestamp)}`], // the network rounds close times to 10 s: the gap between two ledgers is not read from them
       fill: X.blocks.fill(b),
     }),
 
-    blockLine: (b) => `${F().number(b.tx_count)} transactions${b.closedIn != null ? ` · closed ${b.closedIn} s after the previous ledger` : ''} · ${F().date(b.timestamp)}`,
+    blockLine: (b) => `${F().number(b.tx_count)} transactions · closed ${F().date(b.timestamp)}`,
 
     // t: a feed item of the newest ledger (see core/txs.js)
     feedRow: (t) => ({

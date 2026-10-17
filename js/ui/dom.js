@@ -20,6 +20,19 @@
   /** 'smooth' for the scrolling the page does by itself, 'auto' (at once) for a person who asked for less motion. */
   const scrollBehavior = () => (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
 
-  Explorer.dom = { $, el, scrollBehavior };
+  /**
+   * Runs `render` (which replaces the children of `container`), then gives the focus back to the element that had it, found again by its
+   * data-id or data-txid: a person who moves through a list with the keyboard must not lose their place when the list refreshes.
+   */
+  function keepFocus(container, render) {
+    const a = document.activeElement;
+    const attr = a && a !== document.body && container.contains(a) ? (a.dataset.id != null ? 'data-id' : a.dataset.txid != null ? 'data-txid' : null) : null;
+    const key = attr && a.getAttribute(attr);
+    render();
+    const again = attr && [...container.querySelectorAll(`[${attr}]`)].find((n) => n.getAttribute(attr) === key);
+    if (again) again.focus({ preventScroll: true });
+  }
+
+  Explorer.dom = { $, el, scrollBehavior, keepFocus };
   Explorer.ui = Explorer.ui || {};
 })();

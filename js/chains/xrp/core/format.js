@@ -58,5 +58,8 @@
   /** The label of a rate (a fee in multiples of the reference fee): "×1.2". */
   const times = (r) => `×${+Number(r).toFixed(r < 10 ? 1 : 0)}`;
 
-  X.format = { RIPPLE_EPOCH, unixTime, xrp, xrpSigned, currency, iouValue, amount, times };
+  /** The time of day of a Unix time, 24 h: "14:03:20". */
+  const clock = (unix) => new Date(unix * 1000).toLocaleTimeString('en-GB');
+
+  X.format = { RIPPLE_EPOCH, unixTime, clock, xrp, xrpSigned, currency, iouValue, amount, times };
 })();

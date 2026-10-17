@@ -86,7 +86,7 @@
       const top = rows.slice().sort((a, c) => c.nodes - a.nodes).slice(0, 15);
       show(el('h2', {}, `Ledger #${F.number(b.height)}`), fields([
         ['Hash', mono(b.id)],
-        ['Closed', `${F.date(b.timestamp)} (${F.ago(b.timestamp)})${b.closedIn != null ? ` · ${b.closedIn} s after the previous one` : ''}`],
+        ['Closed', el('span', {}, `${F.date(b.timestamp)} (${F.ago(b.timestamp)})`, el('small', { class: 'muted' }, ' · the network rounds close times to 10 s'))],
         b.previousblockhash ? ['Parent', ledgerLink(b.height - 1, b.previousblockhash)] : null,
         ['Transactions', `${F.number(rows.length)} · ${F.number(count('failed'))} failed (${pct(count('failed'), rows.length)})`],
         ['By kind', el('span', { class: 'xrp-kinds' }, kinds.map(([k, n]) => el('span', {}, kindDot(k), `${X.txs.KINDS[k].label} ${F.number(n)}`)))],

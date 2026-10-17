@@ -71,7 +71,7 @@
       $('#wallet').hidden = false;
       $('#wallet-address').textContent = F.short(m.address, 10, 6);
       $('#wallet-address').title = `${m.address}\nClick for the details of this address`;
-      $('#wallet-list').replaceChildren(...(m.entries.length || !m.empty ? m.entries.map((e) => line(e, m.lit.has(e.txid), m.notes.get(e.txid))) : [el('li', { class: 'w-empty' }, m.empty)]));
+      Explorer.dom.keepFocus($('#wallet-list'), () => $('#wallet-list').replaceChildren(...(m.entries.length || !m.empty ? m.entries.map((e) => line(e, m.lit.has(e.txid), m.notes.get(e.txid))) : [el('li', { class: 'w-empty' }, m.empty)])));
       $('#wallet-more').hidden = !m.more;
       $('#wallet-more').textContent = m.moreLabel ?? 'Load older';
       Explorer.ui.tracker.setBusy(m.busy);

@@ -883,6 +883,24 @@ dialog::backdrop {
   backdrop-filter: blur(3px);
 }
 
+/* a finger needs more than a pointer: the small controls grow where the main input is touch */
+@media (pointer: coarse) {
+  .legend-scale.categories .kind {
+    min-height: 32px;
+    padding: 6px 8px;
+  }
+
+  .w-btn {
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .hud-actions button,
+  .hud-actions select {
+    min-height: 36px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .block,
   .nav,

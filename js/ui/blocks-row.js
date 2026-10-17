@@ -59,7 +59,8 @@
       $('#more-blocks').addEventListener('click', () => handlers.onLoadOlder());
     },
     renderBlocks(blocks, { selectedId = null, freshId = null } = {}) {
-      $('#blocks').replaceChildren(...blocks.map((b) => blockCard(b, selectedId, freshId)));
+      const row = $('#blocks');
+      Explorer.dom.keepFocus(row, () => row.replaceChildren(...blocks.map((b) => blockCard(b, selectedId, freshId))));
     },
     /** upcoming: the projected blocks from the mempool; only the first one (the next block) is shown. */
     renderUpcoming(upcoming, selected) {

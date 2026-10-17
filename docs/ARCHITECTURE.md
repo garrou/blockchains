@@ -152,7 +152,8 @@ first again for 2 minutes; a server that says its budget needs 10 s or more to c
 that in `localStorage` (`badNodes.xrp`) so that a reload does not start with the server that has just refused), and until the answers come back the commands go out one at a time (300 ms apart, doubling at each refusal up to 2 s). The diagnostics
 panel says why each connection ended (who closed it, with which code) and why the page left a server.
 A command that was on its way when the connection dropped is asked again on the next one (they are all reads), and the start-up shares
-one read of the latest ledgers instead of making two. The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`).
+one read of the latest ledgers instead of making two. The ledger clock counts seconds from 2000-01-01 (`unixTime` in `core/format.js`). The network rounds the close time of a ledger to 10 s, so the page shows
+a time of day and never the gap between two ledgers (it would read 1 s, 1 s, 8 s...); the pace ("a ledger every ~4 s") is measured over the ledgers held.
 
 What is Bitcoin-specific beyond the towers: the fee card (`Fees to pay now`, `core/stats.js` `fromFees`) reads `/v1/fees/recommended` and says what
 the fee rates (sat/vB) that get a transaction into the next block, within half an hour and within an hour, plus the "economy" rate; the page of a transaction that is not mined yet says whether it signals replace-by-fee

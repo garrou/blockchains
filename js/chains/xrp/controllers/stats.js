@@ -16,7 +16,7 @@
     const blocks = Explorer.nav.liveBlocks().slice(0, WINDOW); // the latest ledgers: the rate is a recent one, not an average of the whole session
     const last = blocks[0];
     const head = X.live.headIndex() || last?.height;
-    if (head) Explorer.ui.statsBar.renderLedger({ value: F.number(head), sub: last ? `closed ${last.closedIn != null ? `after ${last.closedIn} s · ` : ''}${F.number(last.tx_count)} tx${last.height < head ? ` · shown up to #${F.number(last.height)}` : ''}` : ' ' });
+    if (head) Explorer.ui.statsBar.renderLedger({ value: F.number(head), sub: last ? `closed ${X.format.clock(last.timestamp)} · ${F.number(last.tx_count)} tx${last.height < head ? ` · shown up to #${F.number(last.height)}` : ''}` : ' ' });
     if (blocks.length > 1) {
       const span = blocks[0].timestamp - blocks.at(-1).timestamp;
       const txs = blocks.slice(0, -1).reduce((s, b) => s + b.tx_count, 0); // the oldest one only marks the start of the span
