@@ -10,12 +10,13 @@ const path = require('path');
 
 const JS = path.join(__dirname, '..', 'js');
 
-// Modules that belong to a chain (and that a chain registers on BTC), and words only Bitcoin uses.
+// Modules that belong to a chain (and that a chain registers on BTC), and words only one chain uses.
 const FORBIDDEN = [
   [/\bBTC\.(api|socket|txs|projection|stats|address|wallet|search|details|searchCtl|statsCtl|walletCtl)\b/, 'a Bitcoin module'],
   [/\bBTC\.ui\.(detail|statsBar|wallet)\b/, 'a Bitcoin screen'],
   [/sat\/vB|\bsats?\b|\bsatoshis?\b|\bvB\b/, 'a Bitcoin unit'],
   [/mempool\.space/, 'a Bitcoin endpoint'],
+  [/\bBTC\.eth\b|\bgwei\b|\bwei\b|\bETH\b/, 'an Ethereum module or unit'],
 ];
 
 function listFiles(dir) {

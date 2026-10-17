@@ -5,7 +5,6 @@
   const BTC = (window.BTC = window.BTC || {});
   const S = BTC.config.scene;
   const state = BTC.state;
-  const F = BTC.format;
 
   const ui = () => BTC.ui;
   const sync = () => BTC.sceneSync;
@@ -26,7 +25,7 @@
     if (loadingOlder) return;
     const oldest = state.blocks.at(-1);
     ui().blocksRow.setMore(oldest && oldest.height > 0
-      ? { title: '+ Older', sub: `before #${F.number(oldest.height)}` }
+      ? { title: '+ Older', sub: `before #${BTC.chain.blockNumber(oldest)}` }
       : { hidden: true }); // nothing older than the genesis block
   }
 

@@ -4,7 +4,7 @@
   --line: #2b3040;
   --text: #e6e8ef;
   --muted: #8a91a6;
-  --accent: #f7931a;
+  --accent: #f7931a; /* the page sets it from BTC.chain.theme.accent (app.js) */
   --ok: #3ecf8e;
   --bad: #ef5b5b;
   --mine: #ff5cf0; /* the tracked wallet: beacons, outlined blocks, the panel */
@@ -592,7 +592,7 @@ dd {
 
 .block.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 0 18px #f7931a55;
+  box-shadow: 0 0 0 1px var(--accent), 0 0 18px color-mix(in srgb, var(--accent) 33%, transparent);
 }
 
 .block.pending.clickable {
@@ -1070,3 +1070,10 @@ button:focus-visible:hover { border-color: var(--line); } /* one orange contour 
   /* the stage is a column on a phone: the panel sits between the scene and the legend instead of over the scene */
   .wallet { position: static; width: auto; max-height: 44vh; margin: .5rem .75rem; }
 }
+
+/* ---------- switch between the blockchains ---------- */
+.chains { display: flex; gap: .3rem; }
+.chains a { padding: .22rem .7rem; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); text-decoration: none; font-size: .85rem; }
+.chains a:hover { color: var(--text); border-color: var(--accent); }
+.chains a[aria-current="page"] { color: var(--text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+@media (max-width: 640px) { .top .chains { order: 1; } }

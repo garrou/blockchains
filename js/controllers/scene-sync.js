@@ -22,7 +22,8 @@
   // The blocks that exist in 3D: a window that slides with the camera (it is centered on the focused slot).
   const windowStart = () => BTC.blocks.windowStart(state.blocks, state.focusId, S.reach);
   const windowBlocks = () => BTC.blocks.windowAround(state.blocks, state.focusId, S.reach);
-  const showsNext = () => !state.detached && windowStart() === 0; // the next block only makes sense next to the latest one
+  const hasNext = () => BTC.chain.nextBlock !== false; // a chain without a mempool has no next block to draw
+  const showsNext = () => hasNext() && !state.detached && windowStart() === 0; // the next block only makes sense next to the latest one
   const known = (id) => { const e = cache.get(id); return !!(e && e.txs && !e.txs.approx); }; // complete contents in memory
   const near = (b) => BTC.blocks.isNear(windowBlocks(), b.id, state.focusId, S.detailRadius);
   const wantsDetail = (b) => BTC.blocks.wantsDetail(windowBlocks(), b.id, state.focusId, S.detailRadius, known);
@@ -146,11 +147,11 @@
     const shown = windowBlocks();
     // Every block keeps its place in the world: the chain is laid out by rank in the list, not by rank in the window, so
     // the window can slide along without anything moving (the next block, when the chain is live, sits at 0).
-    const first = (state.detached ? 0 : 1) + windowStart();
+    const first = (state.detached || !hasNext() ? 0 : 1) + windowStart();
     scene.setSlots([
       ...(showsNext() ? [{ id: S.nextId, kind: 'next', label: 'NEXT', pos: 0 }] : []),
       ...shown.map((b, i) => ({
-        id: b.id, kind: 'mined', label: `#${BTC.format.number(b.height)}`, prev: b.previousblockhash, pos: first + i,
+        id: b.id, kind: 'mined', label: `#${BTC.chain.blockNumber(b)}`, prev: b.previousblockhash, pos: first + i,
         ...(b.id === fresh && showsNext() ? { from: 0, fresh: true } : {}),
       })),
     ]);
@@ -203,7 +204,7 @@
     projShown = false;
     clearTimeout(projTimer); projTimer = 0;
     if (scene) scene.setTxs(S.nextId, null);
-    BTC.chain.live.trackNext();
+    BTC.chain.live.trackNext?.();
   }
 
   BTC.sceneSync = {

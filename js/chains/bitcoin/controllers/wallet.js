@@ -36,7 +36,7 @@
     const w = state.wallet;
     if (!w) return;
     const list = entriesOf(w);
-    ui().wallet.render({
+    ui().tracker.render({
       address: w.address, entries: list, lit: sync().litTxids(), notes: notesOf(list), reach: BTC.wallet.reach(w.txs),
       more: BTC.wallet.hasOlder(w.txs, w.confirmedTotal), busy: w.busy, failed: w.failed, dim,
     });
@@ -48,7 +48,7 @@
     if (!w) {
       byTxid = new Map();
       sync().setHighlight(null);
-      ui().wallet.hide();
+      ui().tracker.hide();
       return;
     }
     const list = entriesOf(w);
@@ -63,7 +63,7 @@
     frame = requestAnimationFrame(() => {
       frame = 0;
       const w = state.wallet;
-      if (w) ui().wallet.refreshLit(sync().litTxids(), notesOf(entriesOf(w)));
+      if (w) ui().tracker.refreshLit(sync().litTxids(), notesOf(entriesOf(w)));
     });
   }
 
@@ -78,7 +78,7 @@
     const w = state.wallet;
     if (!w || w.busy) return;
     w.busy = true;
-    ui().wallet.setBusy(true);
+    ui().tracker.setBusy(true);
     try {
       const [totals, fresh] = await Promise.all([BTC.api.address(w.address), BTC.api.addressTxs(w.address)]);
       if (state.wallet !== w) return; // stopped or replaced meanwhile
@@ -99,7 +99,7 @@
     const last = w && BTC.address.lastConfirmed(w.txs);
     if (!w || w.busy || !last) return;
     w.busy = true;
-    ui().wallet.setBusy(true);
+    ui().tracker.setBusy(true);
     try {
       const page = BTC.address.fresh(w.txs, await BTC.api.addressTxsAfter(w.address, last));
       if (state.wallet !== w) return;
@@ -138,7 +138,7 @@
     const list = entriesOf(state.wallet);
     const first = list.find((e) => e.pending || state.blocks.some((b) => b.id === e.hash)) ?? list[0];
     if (first) jump(first);
-    ui().wallet.reveal();
+    ui().tracker.reveal();
   }
 
   function clear() {

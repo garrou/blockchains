@@ -4,7 +4,6 @@
   'use strict';
   const BTC = (window.BTC = window.BTC || {});
   const { $, el } = BTC.dom;
-  const F = BTC.format;
 
   const ORDER_KEY = 'layoutOrder', PLACEMENT_KEY = 'layoutPlacement';
 
@@ -24,12 +23,12 @@
 
   /** The fee scale legend: gradient and ticks come from the very stops the towers are colored with (the chain's rates). */
   function renderLegend() {
-    const C = BTC.colors, rates = BTC.chain.rates, at = (r) => `${(C.position(r) * 100).toFixed(1)}%`;
+    const C = BTC.colors, rates = BTC.chain.rates, label = rates.label ?? String, at = (r) => `${(C.position(r) * 100).toFixed(1)}%`;
     const css = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
     $('#legend-bar').style.background = `linear-gradient(90deg, ${C.stops.map((s) => `${css(s.hex)} ${at(s.rate)}`).join(', ')})`;
     $('#legend-ticks').replaceChildren(...rates.ticks.map((r) =>
-      el('span', { style: `left:${at(r)}`, class: r === C.MIN_RATE ? 'first' : '' }, String(r))));
-    $('#legend-max').textContent = `${C.MAX_RATE}+ ${rates.unit}`; // the right end of the bar: this rate and above look the same
+      el('span', { style: `left:${at(r)}`, class: r === C.MIN_RATE ? 'first' : '' }, label(r))));
+    $('#legend-max').textContent = `${label(C.MAX_RATE)}+ ${rates.unit}`; // the right end of the bar: this rate and above look the same
   }
 
   BTC.ui.hud = {
@@ -60,7 +59,7 @@
       $('#hud-details').hidden = true;
     },
     showBlock(b) {
-      $('#hud-title').textContent = `Block #${F.number(b.height)}`;
+      $('#hud-title').textContent = `Block #${BTC.chain.blockNumber(b)}`;
       $('#hud-sub').textContent = BTC.chain.blockLine(b);
       $('#hud-details').hidden = false;
     },

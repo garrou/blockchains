@@ -58,7 +58,21 @@
   //   onHighlight()                the engine lit other towers in the scene (see scene3d's highlight)
   //   start({ scene })             once, when the page is ready: build the chain's own screens, start its own timers.
   //                                scene: the 3D scene, or null when the browser has no WebGL
+  //   theme.accent                 0xRRGGBB: the page's accent (title, outlines, the mined blocks in 3D). Default: a neutral grey-blue
+  //   rates.label(rate)            how a rate reads on the legend ("10k"). Default: the number as it is
+  //   rates.heightScale            how a tower's height follows its rate. 'log1p' (default) is log(1 + rate): it separates the
+  //                                high rates well, which suits rates that are mostly above 1. 'position' spreads the heights
+  //                                over the whole color scale (min..max, logarithmic): for rates that live far below 1
+  //   nextBlock                    false: the chain has no pending block to show (no mempool to read): the scene has no "next"
+  //                                slot, and live.onProjected / onUpcoming are never called: nextCard, nextLine, live.trackNext
+  //                                and createPending can be left out
+  //   blockNumber(block)           how the number of a block reads ("21,500,000"). Default: its height, with thousands separators.
+  //                                A chain whose engine height is not the number people know (Solana: a block is a slot) says it here
   const DEFAULTS = {
+    theme: { accent: 0x8aa4d6 },
+    nextBlock: true,
+    createPending: () => ({ apply: () => null, hasData: () => false, has: () => false, size: () => 0, values: () => [], takeFresh: () => [], reset() {} }),
+    blockNumber: (b) => BTC.format.number(b.height),
     openTx() {},
     openBlock() {},
     search() {},
@@ -70,9 +84,13 @@
 
   const get = (obj, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 
+  // What a chain without a next block (nextBlock: false) does not have to provide
+  const NEXT_ONLY = new Set(['nextCard', 'nextLine', 'live.trackNext', 'createPending']);
+
   /** Throws one Error listing everything a chain spec lacks (or has with the wrong type). */
   function validate(spec) {
-    const problems = REQUIRED.filter(([path, type]) => typeof get(spec, path) !== type)
+    const needed = spec.nextBlock === false ? REQUIRED.filter(([path]) => !NEXT_ONLY.has(path)) : REQUIRED;
+    const problems = needed.filter(([path, type]) => typeof get(spec, path) !== type)
       .map(([path, type, why]) => `  - ${path} (${type}): ${why}`);
     const stops = spec.rates && spec.rates.stops;
     if (Array.isArray(stops) && (stops.length < 2 || stops[0][0] !== spec.rates.min || stops.at(-1)[0] !== spec.rates.max)) {

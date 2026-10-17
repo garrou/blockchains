@@ -1,5 +1,6 @@
-// The wallet panel over the 3D scene: the tracked address, its transactions (a click goes to their block), "load older".
-// Views only: the data comes from controllers/wallet.js.
+// The panel over the 3D scene for a tracked address: its transactions (a click goes to their block), "load older".
+// Views only: the data comes from the chain's own controller (Bitcoin: chains/bitcoin/controllers/wallet.js). The chain
+// says how an amount reads (format) and how the "more" button is called, the engine draws the rest.
 (() => {
   'use strict';
   const BTC = (window.BTC = window.BTC || {});
@@ -9,6 +10,7 @@
   const DIM_KEY = 'walletDim';
 
   let handlers = {};
+  let formatAmount = () => '';
   let shown = { address: null, count: 0, reach: null, failed: false }; // what the summary line says
 
   /** One transaction: a lit dot when its tower is drawn, the block (or "Pending"), what it did to the balance. */
@@ -19,7 +21,7 @@
         el('span', { class: 'w-what' },
           el('b', {}, e.pending ? 'Pending' : `#${F.number(e.height)}`),
           el('small', {}, e.pending ? note ?? '' : F.ago(e.time))),
-        el('span', { class: `amt ${e.net < 0 ? 'down' : 'up'}` }, F.btcSigned(e.net))));
+        el('span', { class: `amt ${e.net < 0 ? 'down' : 'up'}` }, formatAmount(e))));
   }
 
   function summary(litCount) {
@@ -30,13 +32,15 @@
     $('#wallet-sum').textContent = parts.join(' · ');
   }
 
-  BTC.ui.wallet = {
+  BTC.ui.tracker = {
     /**
-     * handlers: onJump(entry), onOpenAddress(address), onRefresh(), onClear(), onMore(), onDim(bool).
+     * handlers: onJump(entry), onOpenAddress(address), onRefresh(), onClear(), onMore(), onDim(bool), and
+     * format(entry) -> text of the amount the transaction moved (e.g. "-0.1 BTC"), colored by the sign of entry.net.
      * Returns {dim}: the "dim the other transactions" choice to start with (the remembered one, if any).
      */
     init(h) {
       handlers = h;
+      formatAmount = h.format;
       let dim = true;
       try { dim = localStorage.getItem(DIM_KEY) !== '0'; } catch { /* storage unavailable */ }
       $('#wallet-dim').checked = dim;
@@ -58,7 +62,8 @@
 
     /**
      * m: { address, entries (core/wallet.entries), lit: Set of the txids whose tower is drawn, notes: Map txid -> what a
-     * pending transaction waits for, reach: lowest block loaded, more: older ones can be loaded, busy, failed, dim }.
+     * pending transaction waits for, reach: lowest block loaded, more: older ones can be loaded (moreLabel: what the button
+     * says, default "Load older"), busy, failed, dim }.
      */
     render(m) {
       shown = { address: m.address, count: m.entries.length, reach: m.reach, failed: m.failed };
@@ -67,7 +72,8 @@
       $('#wallet-address').title = `${m.address}\nClick for the details of this address`;
       $('#wallet-list').replaceChildren(...m.entries.map((e) => line(e, m.lit.has(e.txid), m.notes.get(e.txid))));
       $('#wallet-more').hidden = !m.more;
-      BTC.ui.wallet.setBusy(m.busy);
+      $('#wallet-more').textContent = m.moreLabel ?? 'Load older';
+      BTC.ui.tracker.setBusy(m.busy);
       $('#wallet-dim').checked = m.dim;
       summary(m.lit.size);
     },

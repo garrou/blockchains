@@ -10,6 +10,7 @@
   const { nextId } = BTC.config.scene;
   const { state, nav } = BTC;
   const chain = BTC.chain;
+  document.documentElement.style.setProperty('--accent', `#${chain.theme.accent.toString(16).padStart(6, '0')}`); // the chain's color
   const ui = BTC.ui;
 
   // ----- 3D scene (optional: needs Three.js and WebGL) -----

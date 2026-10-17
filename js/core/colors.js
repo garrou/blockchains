@@ -22,11 +22,17 @@
     return ca.map((c, k) => (c + (cb[k] - c) * t) * brightness);
   }
 
-  /** Tower height for a fee rate: logarithmic, saturating at MAX_RATE. */
-  const towerHeight = (r) => 0.6 + 12 * (Math.log(1 + Math.min(r, MAX_RATE)) / Math.log(1 + MAX_RATE));
-
   /** Position (0..1) of a fee rate on the logarithmic scale of the colors: where the legend draws it. */
   const position = (r) => (Math.log10(Math.min(MAX_RATE, Math.max(MIN_RATE, r))) - Math.log10(MIN_RATE)) / (Math.log10(MAX_RATE) - Math.log10(MIN_RATE));
+
+  /**
+   * Tower height for a fee rate, saturating at MAX_RATE. 'log1p' (default): log(1 + rate), flat for small rates;
+   * 'position': proportional to the position on the color scale, so a chain whose rates are all small still gets towers of
+   * every height (see rates.heightScale in core/chain.js).
+   */
+  const towerHeight = BTC.chain.rates.heightScale === 'position'
+    ? (r) => 0.6 + 12 * position(r)
+    : (r) => 0.6 + 12 * (Math.log(1 + Math.min(r, MAX_RATE)) / Math.log(1 + MAX_RATE));
 
   BTC.colors = {
     rate,
@@ -37,6 +43,6 @@
     stops: STOPS.map(([r, hex]) => ({ rate: r, hex })),
     COINBASE: rgb(0xffd76a).map((c) => c * 1.5),
     NEXT_BLOCK_HEX: 0x4cc9f0,
-    MINED_BLOCK_HEX: 0xf7931a,
+    MINED_BLOCK_HEX: BTC.chain.theme.accent,
   };
 })();

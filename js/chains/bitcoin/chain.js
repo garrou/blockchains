@@ -37,6 +37,8 @@
       wallet: { pollMs: 30000, afterBlockMs: 3000 },          // see controllers/wallet.js
     },
 
+    theme: { accent: 0xf7931a },
+
     // ----- numbers -----
     capacity: { size: BLOCK_VSIZE },
     // Fee rates (sat/vB) run from the lowest relay fee, 0.1, to 300 (above: same color and height). The towers and the
@@ -138,7 +140,8 @@
         } : null,
       });
       if (scene) { // the panel of the tracked address lives over the 3D view
-        BTC.walletCtl.setDim(BTC.ui.wallet.init({
+        BTC.walletCtl.setDim(BTC.ui.tracker.init({
+          format: (e) => F().btcSigned(e.net),
           onJump: BTC.walletCtl.jump, onOpenAddress: d.openAddress, onRefresh: BTC.walletCtl.refresh,
           onClear: BTC.walletCtl.clear, onMore: BTC.walletCtl.loadOlder, onDim: BTC.walletCtl.setDim,
         }).dim);

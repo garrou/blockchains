@@ -1,0 +1,107 @@
+// Opening the detail dialog: fetches the data and hands it to the view. Only the latest request may update the dialog
+// (an older, slower response never overwrites a newer one: see controllers/requests.js).
+(() => {
+  'use strict';
+  const BTC = (window.BTC = window.BTC || {});
+  const E = (BTC.eth = BTC.eth || {});
+  const { begin, isCurrent } = BTC.requests;
+
+  // These requests open the dialog (as "Loading…") before the response arrives: if the user has closed it meanwhile, a
+  // late response must not open it again.
+  const wanted = (token) => isCurrent(token) && BTC.ui.dialog.isOpen();
+
+  const rpc = () => E.rpc;
+  const must = (x) => { if (x instanceof Error) throw x; return x; };
+
+  // ----- tokens: name, symbol and decimals of a contract, read once -----
+  const tokenCache = new Map();
+
+  /** Reads name(), symbol() and decimals() of these contracts (one request). A contract that is not a token just gives nulls. */
+  async function tokenInfo(addresses) {
+    const todo = [...new Set(addresses)].filter((a) => !tokenCache.has(a));
+    if (todo.length) {
+      const S = E.abi.SEL;
+      const calls = todo.flatMap((to) => [S.name, S.symbol, S.decimals].map((data) => ['eth_call', [{ to, data }, 'latest']]));
+      const res = await rpc().batch(calls).catch(() => []);
+      todo.forEach((a, i) => {
+        const [name, symbol, decimals] = res.slice(i * 3, i * 3 + 3).map((r) => (r instanceof Error ? null : r));
+        tokenCache.set(a, {
+          name: E.abi.decodeText(name), symbol: E.abi.decodeText(symbol),
+          decimals: decimals && decimals !== '0x' ? Number(E.abi.uint(decimals)) : null,
+        });
+      });
+    }
+    return new Map(addresses.map((a) => [a, tokenCache.get(a)]));
+  }
+
+  async function openTx(hash) {
+    const token = begin();
+    BTC.ui.detail.loading();
+    try {
+      const [tx, receipt] = await rpc().batch([['eth_getTransactionByHash', [hash]], ['eth_getTransactionReceipt', [hash]]]);
+      if (!must(tx)) throw Object.assign(new Error('no such transaction'), { status: 404 });
+      const rec = receipt instanceof Error ? null : receipt;
+      const header = rec ? await rpc().call('eth_getBlockByHash', [rec.blockHash, false]) : null;
+      const block = header ? E.blocks.normalize(header) : null;
+      const all = E.abi.transfers(rec?.logs);
+      const shown = all.slice(0, BTC.chain.config.logsShown);
+      const tokens = await tokenInfo([...new Set(shown.map((t) => t.token))]).catch(() => new Map());
+      if (!wanted(token)) return;
+      BTC.ui.detail.tx({ r: E.txs.row(tx, rec, block), tx, receipt: rec, block, transfers: shown, moreTransfers: all.length > shown.length, tokens });
+    } catch (e) {
+      if (wanted(token)) BTC.ui.detail.message(e.status === 404 ? 'Transaction not found.' : `Transaction not found (${e.message})`);
+    }
+  }
+
+  async function openBlock(id) {
+    const token = begin();
+    BTC.ui.detail.loading();
+    try {
+      const { block, rows } = await E.data.rowsOf({ id });
+      if (!wanted(token)) return;
+      BTC.ui.detail.block({ block, rows: rows.slice(0, 25) });
+    } catch (e) {
+      if (wanted(token)) BTC.ui.detail.message(`Block not found (${e.message})`);
+    }
+  }
+
+  /** An account: balance, number of transactions sent, code (a contract?), and what the mempool sample knows about it. */
+  /** checksumOk: false when the user typed the address with a wrong checksum (the page warns). */
+  async function openAddress(address, ens = null, checksumOk = true) {
+    const token = begin();
+    BTC.ui.detail.loading();
+    try {
+      const [balance, nonce, code] = (await rpc().batch([
+        ['eth_getBalance', [address, 'latest']], ['eth_getTransactionCount', [address, 'latest']], ['eth_getCode', [address, 'latest']],
+      ])).map(must);
+      const codeSize = code && code !== '0x' ? (code.length - 2) / 2 : 0;
+      const tokenOf = codeSize ? (await tokenInfo([address]).catch(() => new Map())).get(address) : null;
+      if (!wanted(token)) return;
+      BTC.ui.detail.address({
+        address, ens, balance: E.format.big(balance), nonce: Number(E.format.big(nonce)), codeSize,
+        token: tokenOf && (tokenOf.symbol || tokenOf.name) ? tokenOf : null,
+        pending: E.live.pool.involving(address), checksumOk,
+      });
+    } catch (e) {
+      if (wanted(token)) BTC.ui.detail.message(`Address lookup failed (${e.message})`);
+    }
+  }
+
+  /** An ENS name (name.eth): found through the ENS registry, then its resolver. Plain names only. */
+  async function resolveName(name) {
+    const node = `0x${E.abi.namehash(name)}`;
+    const registry = BTC.chain.config.ensRegistry;
+    const resolverWord = await rpc().call('eth_call', [{ to: registry, data: E.abi.SEL.resolver + node.slice(2) }, 'latest']);
+    const resolver = E.abi.addressOf(resolverWord);
+    if (!resolver) return null;
+    return E.abi.addressOf(await rpc().call('eth_call', [{ to: resolver, data: E.abi.SEL.addr + node.slice(2) }, 'latest']));
+  }
+
+  async function openName(name) {
+    const address = await resolveName(name);
+    if (!address) throw new Error(`"${name}" does not resolve to an address`);
+    return openAddress(address, name);
+  }
+
+  E.details = { openTx, openBlock, openAddress, openName, resolveName, tokenInfo };
+})();
